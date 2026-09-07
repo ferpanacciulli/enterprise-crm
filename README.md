@@ -10,13 +10,22 @@ enterprise-crm/
 └── frontend/   # SPA en React (Vite)
 ```
 
-## 1. Levantar la infraestructura (Postgres + Redis)
+## 1. Elegir motor de base de datos (perfiles de Spring)
 
-Desde `backend/`, con Docker Desktop corriendo:
+El proyecto soporta más de un motor sin tocar código, vía **perfiles**:
 
+| Perfil | Motor | Necesita Docker | Cuándo usarlo |
+|---|---|---|---|
+| `h2` (default) | H2, en un archivo local (`data/crmdb.mv.db`) | No | Probar el proyecto sin instalar nada |
+| `postgresql` | PostgreSQL real | Sí (o instalado nativo) | Desarrollo "real" / antes de producción |
+
+Las migraciones de Flyway (`V1`, `V3`) son las **mismas** para los dos motores — las probé manualmente contra H2 en modo de compatibilidad PostgreSQL y corren sin cambios. Si el día de mañana sumás MySQL, probablemente necesites ajustar sintaxis (`BIGSERIAL` no existe ahí) y armar un perfil `application-mysql.yml` + su propia carpeta de migraciones — la arquitectura ya está pensada para eso, solo falta ese perfil puntual.
+
+**No hace falta declarar el perfil para usar H2** — es el default en `application.yml` (`spring.profiles.active: h2`).
+
+Para usar PostgreSQL en cambio, con Docker corriendo (`docker compose up -d` desde `backend/`):
 ```powershell
-cd backend
-docker compose up -d
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=postgresql"
 ```
 
 ## 2. Levantar el backend
@@ -26,9 +35,12 @@ cd backend
 .\mvnw.cmd spring-boot:run
 ```
 
+Con el perfil `h2` (default), esto ya alcanza — no necesitás Docker ni nada instalado, H2 se crea sola como un archivo en `backend/data/`.
+
 La primera vez que arranca:
-- Flyway aplica las migraciones (`V1` schema inicial, `V2` seed de roles, `V3` tabla de productos).
+- Flyway aplica las migraciones (`V1` schema inicial + seed de roles, `V3` tabla de productos).
 - Un `DataSeeder` crea un usuario admin de prueba y 3 productos de ejemplo (uno queda en bajo stock a propósito).
+- Podés inspeccionar la base en el navegador: `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:file:./data/crmdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE`, user `sa`, sin contraseña).
 
 **Usuario de prueba:** `admin@crm.com` / `Admin123!`
 
@@ -58,6 +70,10 @@ La app queda en `http://localhost:5173`. Ya viene configurada (`.env`) para habl
 - Dashboard con métricas (clientes, productos, bajo stock)
 - Gestión de Clientes (alta, edición, baja)
 - Gestión de Inventario (alta, edición, baja, ajuste rápido de stock +/-, filtro de bajo stock)
+
+## Bug corregido en esta versión
+
+`V1__initial_schema.sql` ya sembraba los roles (`ADMIN`, `MANAGER`, `SALES_REPRESENTATIVE`) al final del script. Existía además un `V2__seed_roles.sql` que insertaba lo mismo — Flyway iba a tirar un duplicate key violation apenas corriera. Se eliminó `V2` (era redundante).
 
 ## Próximos pasos sugeridos
 

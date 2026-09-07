@@ -36,10 +36,17 @@ public class SecurityConfig {
                                 "/auth/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
-                                "/actuator/health"
+                                "/actuator/health",
+                                "/h2-console/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
+
+                // La consola de H2 se sirve dentro de un <frame>; sin esto, Spring Security
+                // la bloquea con X-Frame-Options: DENY. Solo importa cuando el perfil "h2"
+                // tiene la consola habilitada (application-h2.yml) - con el perfil
+                // "postgresql" esa ruta ni siquiera existe.
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
 
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
