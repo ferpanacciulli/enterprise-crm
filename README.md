@@ -65,11 +65,13 @@ La app queda en `http://localhost:5173`. Ya viene configurada (`.env`) para habl
 - Manejo global de excepciones (404, 400 con detalle de campo, 409 duplicados, 401 credenciales)
 - Entities de Opportunity, Activity, Notification y AuditLog ya modeladas (repository listo), pendientes de su propio CRUD — el patrón para armarlas es el mismo que Customer/Product
 
-**Frontend**
-- Login / Registro
-- Dashboard con métricas (clientes, productos, bajo stock)
-- Gestión de Clientes (alta, edición, baja)
-- Gestión de Inventario (alta, edición, baja, ajuste rápido de stock +/-, filtro de bajo stock)
+**Frontend** — React 19 + React Router 7 en **modo data router** (`createBrowserRouter` / `RouterProvider`), no el modo declarativo clásico:
+- **Loaders**: cada ruta carga sus datos (`useLoaderData`) antes de renderizar — no hay `useEffect` + `useState` para el fetch inicial en ninguna pantalla.
+- **Actions + `useFetcher`**: los formularios (alta/edición/baja de Customer y Product, ajuste de stock) se mandan como `<fetcher.Form>` a la `action` de la ruta. React Router revalida el loader solo después de cada submit exitoso — la tabla se refresca sin que el componente pida el reload a mano.
+- **Guard de auth vía loader**: `AppLayout` tiene un loader que redirige a `/login` si no hay token, antes de pintar un solo frame de UI protegida (reemplaza el patrón de componente `<ProtectedRoute>`).
+- **`errorElement`**: si un loader tira un error (ej: la API cae, o el token expiró), lo atrapa una pantalla de error declarativa en vez de que la SPA quede en un estado roto.
+- **Estado en la URL**: el filtro "solo bajo stock" de Inventario vive en el query string (`?lowStock=1`) vía `useSearchParams`, así que es bookmarkeable y dispara la revalidación del loader automáticamente.
+- Login / Registro / Dashboard con métricas / CRUD de Clientes / CRUD de Inventario
 
 ## Bug corregido en esta versión
 
