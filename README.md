@@ -61,9 +61,18 @@ La app queda en `http://localhost:5173`. Ya viene configurada (`.env`) para habl
 **Backend**
 - Auth con JWT (registro / login), passwords con BCrypt
 - CRUD completo de **Clientes** (`/api/customers`)
+- CRUD completo de **Oportunidades** (`/api/opportunities`), ligadas a un Cliente y a un dueño (el usuario autenticado que la crea)
+- Historial de **mensajes/interacciones** por oportunidad (`/api/opportunities/{id}/activities`) — llamadas, emails, reuniones, tareas, notas
 - CRUD completo de **Inventario / Productos** (`/api/products`), con endpoint de bajo stock y ajuste de stock
-- Manejo global de excepciones (404, 400 con detalle de campo, 409 duplicados, 401 credenciales)
-- Entities de Opportunity, Activity, Notification y AuditLog ya modeladas (repository listo), pendientes de su propio CRUD — el patrón para armarlas es el mismo que Customer/Product
+- Manejo global de excepciones (404, 400 con detalle de campo, 409 duplicados, 401 credenciales) con logging real de errores no controlados
+- Entities de Notification y AuditLog ya modeladas (repository listo), pendientes de su propio CRUD
+
+**Frontend**
+- Login / Registro
+- Dashboard con métricas (clientes, oportunidades abiertas, valor del pipeline, productos, bajo stock)
+- Gestión de Clientes (alta, edición, baja)
+- Gestión de Oportunidades (alta con selector de cliente, edición, baja) + vista de detalle con el timeline de mensajes de cada una
+- Gestión de Inventario (alta, edición, baja, ajuste rápido de stock +/-, filtro de bajo stock)
 
 **Frontend** — React 19 + React Router 7 en **modo data router** (`createBrowserRouter` / `RouterProvider`), no el modo declarativo clásico:
 - **Loaders**: cada ruta carga sus datos (`useLoaderData`) antes de renderizar — no hay `useEffect` + `useState` para el fetch inicial en ninguna pantalla.

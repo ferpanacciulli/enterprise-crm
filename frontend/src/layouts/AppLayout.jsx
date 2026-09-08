@@ -20,6 +20,9 @@ export default function AppLayout() {
           <NavLink to="/customers" className={({ isActive }) => (isActive ? 'active' : '')}>
             Clientes
           </NavLink>
+          <NavLink to="/opportunities" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Oportunidades
+          </NavLink>
           <NavLink to="/products" className={({ isActive }) => (isActive ? 'active' : '')}>
             Inventario
           </NavLink>

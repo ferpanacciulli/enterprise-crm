@@ -182,7 +182,7 @@ button.secondary:hover { background: #d1d5db; }
 /* ---- Stats ---- */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1.5rem;
 }
 
@@ -334,4 +334,37 @@ button.secondary:hover { background: #d1d5db; }
   justify-content: flex-end;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+/* ---- Timeline (mensajes de una oportunidad) ---- */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.timeline-item {
+  background: white;
+  border-left: 3px solid #2c5282;
+  border-radius: 6px;
+  padding: 0.9rem 1.1rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.timeline-meta {
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+.timeline-item p {
+  margin: 0;
+  color: #374151;
 }
