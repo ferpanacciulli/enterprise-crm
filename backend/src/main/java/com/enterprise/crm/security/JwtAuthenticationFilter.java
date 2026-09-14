@@ -6,6 +6,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,6 +23,8 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
@@ -34,6 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.debug("[{} {}] Sin header Authorization Bearer -> sigue como anonimo", request.getMethod(), request.getRequestURI());
             filterChain.doFilter(request, response);
             return;
         }
@@ -42,6 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             String username = jwtService.extractUsername(token);
+            log.debug("[{} {}] Token recibido, username extraido: {}", request.getMethod(), request.getRequestURI(), username);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
@@ -53,10 +59,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    log.debug("[{} {}] Autenticado OK como {} con authorities {}", request.getMethod(), request.getRequestURI(), username, userDetails.getAuthorities());
+                } else {
+                    log.warn("[{} {}] Token invalido (firma/expiracion/usuario no coincide) para username {}", request.getMethod(), request.getRequestURI(), username);
                 }
             }
         } catch (JwtException | IllegalArgumentException ex) {
-            // token invalido, corrupto o expirado -> seguimos sin autenticar
+            log.warn("[{} {}] Excepcion parseando el token: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         }
 
         filterChain.doFilter(request, response);
