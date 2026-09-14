@@ -3,6 +3,7 @@ package com.enterprise.crm.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -32,6 +33,11 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
+                        // FIX: el preflight de CORS nunca manda el token Authorization
+                        // (el navegador todavia no sabe si el servidor lo va a aceptar).
+                        // Sin este permitAll, cualquier OPTIONS caia en anyRequest().authenticated()
+                        // y volvia 403 antes de que la peticion real (GET/POST) se intentara siquiera.
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/auth/**",
                                 "/swagger-ui/**",
