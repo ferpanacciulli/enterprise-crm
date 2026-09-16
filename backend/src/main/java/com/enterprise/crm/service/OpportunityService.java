@@ -25,6 +25,7 @@ public class OpportunityService {
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final OpportunityMapper opportunityMapper;
+    private final OpportunityProductService opportunityProductService;
 
     public List<OpportunityResponse> findAll() {
         return opportunityRepository.findAll().stream()
@@ -68,8 +69,12 @@ public class OpportunityService {
     }
 
     @Transactional
-    public void delete(Long id) {
-        opportunityRepository.delete(getEntityOrThrow(id));
+    public void delete(Long id, String actingUserEmail) {
+        Opportunity opportunity = getEntityOrThrow(id);
+        // Libera cualquier stock reservado por esta oportunidad antes de borrarla,
+        // para que ese inventario no quede perdido para siempre.
+        opportunityProductService.releaseAll(id, actingUserEmail);
+        opportunityRepository.delete(opportunity);
     }
 
     private Opportunity getEntityOrThrow(Long id) {

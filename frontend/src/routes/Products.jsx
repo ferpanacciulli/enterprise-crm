@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLoaderData, useFetcher, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 
@@ -12,10 +12,24 @@ const EMPTY_FORM = {
   reorderLevel: '',
 };
 
+const REASON_LABELS = {
+  MANUAL_ADJUSTMENT: 'Ajuste manual',
+  OPPORTUNITY_RESERVE: 'Reservado en oportunidad',
+  OPPORTUNITY_RELEASE: 'Liberado de oportunidad',
+};
+
 export async function productsLoader({ request }) {
   const url = new URL(request.url);
   const onlyLowStock = url.searchParams.get('lowStock') === '1';
-  return api.get(onlyLowStock ? '/api/products/low-stock' : '/api/products');
+  const search = url.searchParams.get('search') || '';
+
+  if (onlyLowStock) {
+    return api.get('/api/products/low-stock');
+  }
+  if (search) {
+    return api.get(`/api/products?search=${encodeURIComponent(search)}`);
+  }
+  return api.get('/api/products');
 }
 
 export async function productsAction({ request }) {
@@ -63,10 +77,14 @@ export default function Products() {
   const formFetcher = useFetcher();
   const stockFetcher = useFetcher();
   const deleteFetcher = useFetcher();
+  const historyFetcher = useFetcher();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [searchInput, setSearchInput] = useState(searchParams.get('search') || '');
+  const [historyProduct, setHistoryProduct] = useState(null);
+  const debounceRef = useRef(null);
 
   const fieldErrors = formFetcher.data?.fieldErrors || {};
   const isSaving = formFetcher.state !== 'idle';
@@ -79,6 +97,18 @@ export default function Products() {
 
   function toggleLowStock() {
     setSearchParams(onlyLowStock ? {} : { lowStock: '1' });
+  }
+
+  // Debounce simple: espera 350ms de silencio antes de actualizar la URL
+  // (y por lo tanto disparar la revalidacion del loader).
+  function handleSearchChange(value) {
+    setSearchInput(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const next = {};
+      if (value) next.search = value;
+      setSearchParams(next);
+    }, 350);
   }
 
   function openCreate() {
@@ -119,6 +149,13 @@ export default function Products() {
       <div className="page-header">
         <h1>Inventario</h1>
         <div className="page-header-actions">
+          <input
+            placeholder="Buscar por nombre, SKU o categoría..."
+            value={searchInput}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            disabled={onlyLowStock}
+            style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db', minWidth: 260 }}
+          />
           <label className="checkbox-label">
             <input type="checkbox" checked={onlyLowStock} onChange={toggleLowStock} />
             Solo bajo stock
@@ -160,6 +197,15 @@ export default function Products() {
               </td>
               <td>{p.reorderLevel}</td>
               <td className="actions">
+                <button
+                  className="link-btn"
+                  onClick={() => {
+                    setHistoryProduct(p);
+                    historyFetcher.load(`/api/products/${p.id}/stock-movements`);
+                  }}
+                >
+                  Historial
+                </button>
                 <button className="link-btn" onClick={() => openEdit(p)}>Editar</button>
                 <button className="link-btn link-btn-danger" onClick={() => handleDelete(p.id)}>Eliminar</button>
               </td>
@@ -224,6 +270,39 @@ export default function Products() {
               <button type="submit" disabled={isSaving}>{isSaving ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </formFetcher.Form>
+        </div>
+      )}
+
+      {historyProduct && (
+        <div className="modal-overlay" onClick={() => setHistoryProduct(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Historial de stock — {historyProduct.name}</h2>
+
+            {historyFetcher.state === 'loading' && <p>Cargando...</p>}
+
+            {historyFetcher.data && (
+              <div className="timeline">
+                {historyFetcher.data.map((m) => (
+                  <div key={m.id} className="timeline-item">
+                    <div className="timeline-header">
+                      <strong>
+                        {m.quantityChange > 0 ? '+' : ''}{m.quantityChange} unidades — {REASON_LABELS[m.reason] || m.reason}
+                      </strong>
+                      <span className="timeline-meta">{m.performedByName} · {new Date(m.createdAt).toLocaleString()}</span>
+                    </div>
+                    {m.opportunityTitle && <p>Oportunidad: {m.opportunityTitle}</p>}
+                  </div>
+                ))}
+                {historyFetcher.data.length === 0 && (
+                  <p className="empty-state">Todavía no hay movimientos registrados para este producto.</p>
+                )}
+              </div>
+            )}
+
+            <div className="modal-actions">
+              <button type="button" className="secondary" onClick={() => setHistoryProduct(null)}>Cerrar</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

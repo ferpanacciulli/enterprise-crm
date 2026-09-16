@@ -49,7 +49,7 @@ public class OpportunityController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        opportunityService.delete(id);
+    public void delete(@PathVariable Long id, Authentication authentication) {
+        opportunityService.delete(id, authentication.getName());
     }
 }

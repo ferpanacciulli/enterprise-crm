@@ -32,6 +32,17 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
+                // Sin esto, Spring Security usa el default Http403ForbiddenEntryPoint
+                // para CUALQUIER request no autenticado (sin token, token invalido, o
+                // token vencido) - lo cual devuelve 403, semanticamente incorrecto.
+                // El codigo correcto es 401 ("no estas autenticado"), y el frontend
+                // usa justo ese 401 para mandarte de nuevo al login.
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(
+                        (request, response, authException) ->
+                                response.sendError(
+                                        jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED,
+                                        "No autenticado")))
+
                 .authorizeHttpRequests(auth -> auth
                         // FIX: el preflight de CORS nunca manda el token Authorization
                         // (el navegador todavia no sabe si el servidor lo va a aceptar).

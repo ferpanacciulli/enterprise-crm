@@ -2,11 +2,17 @@ package com.enterprise.crm.service;
 
 import com.enterprise.crm.dto.ProductRequest;
 import com.enterprise.crm.dto.ProductResponse;
+import com.enterprise.crm.dto.StockMovementResponse;
 import com.enterprise.crm.entity.Product;
+import com.enterprise.crm.entity.StockMovement;
+import com.enterprise.crm.entity.User;
+import com.enterprise.crm.enums.StockMovementReason;
 import com.enterprise.crm.exception.DuplicateResourceException;
 import com.enterprise.crm.exception.ResourceNotFoundException;
 import com.enterprise.crm.mapper.ProductMapper;
 import com.enterprise.crm.repository.ProductRepository;
+import com.enterprise.crm.repository.StockMovementRepository;
+import com.enterprise.crm.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,10 +25,15 @@ import java.util.List;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final StockMovementRepository stockMovementRepository;
+    private final UserRepository userRepository;
     private final ProductMapper productMapper;
 
-    public List<ProductResponse> findAll() {
-        return productRepository.findAll().stream().map(productMapper::toResponse).toList();
+    public List<ProductResponse> findAll(String search) {
+        List<Product> products = (search == null || search.isBlank())
+                ? productRepository.findAll()
+                : productRepository.search(search.trim());
+        return products.stream().map(productMapper::toResponse).toList();
     }
 
     public ProductResponse findById(Long id) {
@@ -31,6 +42,15 @@ public class ProductService {
 
     public List<ProductResponse> findLowStock() {
         return productRepository.findLowStock().stream().map(productMapper::toResponse).toList();
+    }
+
+    public List<StockMovementResponse> findStockMovements(Long productId) {
+        if (!productRepository.existsById(productId)) {
+            throw new ResourceNotFoundException("Producto no encontrado: " + productId);
+        }
+        return stockMovementRepository.findByProductIdOrderByCreatedAtDesc(productId).stream()
+                .map(this::toMovementResponse)
+                .toList();
     }
 
     @Transactional
@@ -58,7 +78,7 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductResponse adjustStock(Long id, int delta) {
+    public ProductResponse adjustStock(Long id, int delta, String actingUserEmail) {
         Product product = getEntityOrThrow(id);
         int newQuantity = product.getQuantityInStock() + delta;
 
@@ -69,7 +89,44 @@ public class ProductService {
         }
 
         product.setQuantityInStock(newQuantity);
-        return productMapper.toResponse(productRepository.save(product));
+        productRepository.save(product);
+
+        logMovement(product, null, delta, StockMovementReason.MANUAL_ADJUSTMENT, actingUserEmail);
+
+        return productMapper.toResponse(product);
+    }
+
+    /**
+     * Usado por OpportunityProductService para loguear las reservas/liberaciones
+     * automaticas de stock (el ajuste de cantidad ya lo hace ese service).
+     */
+    @Transactional
+    public void logMovement(Product product, com.enterprise.crm.entity.Opportunity opportunity,
+                             int quantityChange, StockMovementReason reason, String actingUserEmail) {
+        User actor = userRepository.findByEmail(actingUserEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + actingUserEmail));
+
+        StockMovement movement = StockMovement.builder()
+                .product(product)
+                .opportunity(opportunity)
+                .quantityChange(quantityChange)
+                .reason(reason)
+                .performedBy(actor)
+                .build();
+
+        stockMovementRepository.save(movement);
+    }
+
+    private StockMovementResponse toMovementResponse(StockMovement m) {
+        return StockMovementResponse.builder()
+                .id(m.getId())
+                .quantityChange(m.getQuantityChange())
+                .reason(m.getReason())
+                .opportunityId(m.getOpportunity() != null ? m.getOpportunity().getId() : null)
+                .opportunityTitle(m.getOpportunity() != null ? m.getOpportunity().getTitle() : null)
+                .performedByName(m.getPerformedBy().getFirstName() + " " + m.getPerformedBy().getLastName())
+                .createdAt(m.getCreatedAt())
+                .build();
     }
 
     private Product getEntityOrThrow(Long id) {

@@ -32,7 +32,8 @@ Para usar PostgreSQL en cambio, con Docker corriendo (`docker compose up -d` des
 
 ```powershell
 cd backend
-.\mvnw.cmd spring-boot:run
+Remove-Item -Recurse -Force target, data -ErrorAction SilentlyContinue
+.\mvnw.cmd clean spring-boot:run
 ```
 
 Con el perfil `h2` (default), esto ya alcanza — no necesitás Docker ni nada instalado, H2 se crea sola como un archivo en `backend/data/`.
@@ -63,7 +64,9 @@ La app queda en `http://localhost:5173`. Ya viene configurada (`.env`) para habl
 - CRUD completo de **Clientes** (`/api/customers`)
 - CRUD completo de **Oportunidades** (`/api/opportunities`), ligadas a un Cliente y a un dueño (el usuario autenticado que la crea)
 - Historial de **mensajes/interacciones** por oportunidad (`/api/opportunities/{id}/activities`) — llamadas, emails, reuniones, tareas, notas
-- CRUD completo de **Inventario / Productos** (`/api/products`), con endpoint de bajo stock y ajuste de stock
+- CRUD completo de **Inventario / Productos** (`/api/products`), con búsqueda por nombre/SKU/categoría y endpoint de bajo stock
+- **Reserva automática de stock**: agregar un producto a una oportunidad (`/api/opportunities/{id}/products`) descuenta el stock al instante; sacarlo o borrar la oportunidad lo devuelve
+- **Historial de movimientos de stock** por producto (`/api/products/{id}/stock-movements`) — ajustes manuales y reservas/liberaciones automáticas, con quién y cuándo
 - Manejo global de excepciones (404, 400 con detalle de campo, 409 duplicados, 401 credenciales) con logging real de errores no controlados
 - Entities de Notification y AuditLog ya modeladas (repository listo), pendientes de su propio CRUD
 
@@ -71,8 +74,8 @@ La app queda en `http://localhost:5173`. Ya viene configurada (`.env`) para habl
 - Login / Registro
 - Dashboard con métricas (clientes, oportunidades abiertas, valor del pipeline, productos, bajo stock)
 - Gestión de Clientes (alta, edición, baja)
-- Gestión de Oportunidades (alta con selector de cliente, edición, baja) + vista de detalle con el timeline de mensajes de cada una
-- Gestión de Inventario (alta, edición, baja, ajuste rápido de stock +/-, filtro de bajo stock)
+- Gestión de Oportunidades (alta con selector de cliente, edición, baja) + vista de detalle con productos reservados y el timeline de mensajes
+- Gestión de Inventario (alta, edición, baja, ajuste rápido de stock +/-, filtro de bajo stock, buscador con debounce, modal de historial de movimientos)
 
 **Frontend** — React 19 + React Router 7 en **modo data router** (`createBrowserRouter` / `RouterProvider`), no el modo declarativo clásico:
 - **Loaders**: cada ruta carga sus datos (`useLoaderData`) antes de renderizar — no hay `useEffect` + `useState` para el fetch inicial en ninguna pantalla.

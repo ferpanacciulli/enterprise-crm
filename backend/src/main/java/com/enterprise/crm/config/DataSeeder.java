@@ -3,18 +3,23 @@ package com.enterprise.crm.config;
 import com.enterprise.crm.entity.Activity;
 import com.enterprise.crm.entity.Customer;
 import com.enterprise.crm.entity.Opportunity;
+import com.enterprise.crm.entity.OpportunityProduct;
 import com.enterprise.crm.entity.Product;
 import com.enterprise.crm.entity.Role;
+import com.enterprise.crm.entity.StockMovement;
 import com.enterprise.crm.entity.User;
 import com.enterprise.crm.enums.ActivityType;
 import com.enterprise.crm.enums.CustomerStatus;
 import com.enterprise.crm.enums.OpportunityStage;
 import com.enterprise.crm.enums.RoleName;
+import com.enterprise.crm.enums.StockMovementReason;
 import com.enterprise.crm.repository.ActivityRepository;
 import com.enterprise.crm.repository.CustomerRepository;
+import com.enterprise.crm.repository.OpportunityProductRepository;
 import com.enterprise.crm.repository.OpportunityRepository;
 import com.enterprise.crm.repository.ProductRepository;
 import com.enterprise.crm.repository.RoleRepository;
+import com.enterprise.crm.repository.StockMovementRepository;
 import com.enterprise.crm.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -41,16 +46,19 @@ public class DataSeeder implements CommandLineRunner {
     private final CustomerRepository customerRepository;
     private final OpportunityRepository opportunityRepository;
     private final ActivityRepository activityRepository;
+    private final OpportunityProductRepository opportunityProductRepository;
+    private final StockMovementRepository stockMovementRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
     public void run(String... args) {
         User admin = seedAdminUser();
-        seedSampleProducts();
+        List<Product> products = seedSampleProducts();
         List<Customer> customers = seedSampleCustomers();
         List<Opportunity> opportunities = seedSampleOpportunities(customers, admin);
         seedSampleActivities(opportunities, admin);
+        seedSampleReservations(opportunities, products, admin);
     }
 
     private User seedAdminUser() {
@@ -77,45 +85,48 @@ public class DataSeeder implements CommandLineRunner {
         return admin;
     }
 
-    private void seedSampleProducts() {
+    private List<Product> seedSampleProducts() {
         if (productRepository.count() > 0) {
-            return;
+            return productRepository.findAll();
         }
 
-        productRepository.save(Product.builder()
-                .sku("SKU-001")
-                .name("Licencia Software Anual")
-                .description("Licencia anual del software CRM por usuario")
-                .category("Software")
-                .unitPrice(new BigDecimal("199.99"))
-                .quantityInStock(50)
-                .reorderLevel(10)
-                .active(true)
-                .build());
+        List<Product> products = List.of(
+                productRepository.save(Product.builder()
+                        .sku("SKU-001")
+                        .name("Licencia Software Anual")
+                        .description("Licencia anual del software CRM por usuario")
+                        .category("Software")
+                        .unitPrice(new BigDecimal("199.99"))
+                        .quantityInStock(50)
+                        .reorderLevel(10)
+                        .active(true)
+                        .build()),
 
-        productRepository.save(Product.builder()
-                .sku("SKU-002")
-                .name("Soporte Premium")
-                .description("Plan de soporte tecnico premium 24/7")
-                .category("Servicios")
-                .unitPrice(new BigDecimal("499.00"))
-                .quantityInStock(5)
-                .reorderLevel(10)
-                .active(true)
-                .build());
+                productRepository.save(Product.builder()
+                        .sku("SKU-002")
+                        .name("Soporte Premium")
+                        .description("Plan de soporte tecnico premium 24/7")
+                        .category("Servicios")
+                        .unitPrice(new BigDecimal("499.00"))
+                        .quantityInStock(5)
+                        .reorderLevel(10)
+                        .active(true)
+                        .build()),
 
-        productRepository.save(Product.builder()
-                .sku("SKU-003")
-                .name("Capacitacion Onboarding")
-                .description("Sesion de capacitacion inicial para nuevos clientes")
-                .category("Servicios")
-                .unitPrice(new BigDecimal("150.00"))
-                .quantityInStock(20)
-                .reorderLevel(5)
-                .active(true)
-                .build());
+                productRepository.save(Product.builder()
+                        .sku("SKU-003")
+                        .name("Capacitacion Onboarding")
+                        .description("Sesion de capacitacion inicial para nuevos clientes")
+                        .category("Servicios")
+                        .unitPrice(new BigDecimal("150.00"))
+                        .quantityInStock(20)
+                        .reorderLevel(5)
+                        .active(true)
+                        .build())
+        );
 
         System.out.println(">> 3 productos de prueba creados (uno queda en bajo stock a proposito)");
+        return products;
     }
 
     private List<Customer> seedSampleCustomers() {
@@ -296,5 +307,41 @@ public class DataSeeder implements CommandLineRunner {
 
         activityRepository.saveAll(activities);
         System.out.println(">> " + activities.size() + " mensajes/interacciones de prueba creados");
+    }
+
+    private void seedSampleReservations(List<Opportunity> opportunities, List<Product> products, User actor) {
+        if (opportunityProductRepository.count() > 0 || opportunities.size() < 2 || products.size() < 3) {
+            return;
+        }
+
+        Opportunity first = opportunities.get(0);
+        Opportunity second = opportunities.get(1);
+        Product license = products.get(0); // SKU-001
+        Product training = products.get(2); // SKU-003
+
+        reserve(first, license, 2, actor);
+        reserve(second, training, 3, actor);
+
+        System.out.println(">> 2 reservas de producto de prueba creadas (con su descuento de stock ya aplicado)");
+    }
+
+    private void reserve(Opportunity opportunity, Product product, int quantity, User actor) {
+        product.setQuantityInStock(product.getQuantityInStock() - quantity);
+        productRepository.save(product);
+
+        opportunityProductRepository.save(OpportunityProduct.builder()
+                .opportunity(opportunity)
+                .product(product)
+                .quantity(quantity)
+                .unitPrice(product.getUnitPrice())
+                .build());
+
+        stockMovementRepository.save(StockMovement.builder()
+                .product(product)
+                .opportunity(opportunity)
+                .quantityChange(-quantity)
+                .reason(StockMovementReason.OPPORTUNITY_RESERVE)
+                .performedBy(actor)
+                .build());
     }
 }

@@ -1,4 +1,4 @@
-import { Form, Link, redirect, useActionData, useNavigation } from 'react-router-dom';
+import { Form, Link, redirect, useActionData, useNavigation, useSearchParams } from 'react-router-dom';
 import { authApi } from '../lib/api';
 import { saveSession, getToken } from '../lib/session';
 
@@ -27,7 +27,9 @@ export async function loginAction({ request }) {
 export default function Login() {
   const actionData = useActionData();
   const navigation = useNavigation();
+  const [searchParams] = useSearchParams();
   const isSubmitting = navigation.state === 'submitting';
+  const sessionExpired = searchParams.get('sessionExpired') === '1';
 
   return (
     <div className="auth-page">
@@ -37,6 +39,9 @@ export default function Login() {
           Usuario de prueba: <code>admin@crm.com</code> / <code>Admin123!</code>
         </p>
 
+        {sessionExpired && !actionData?.error && (
+          <div className="alert alert-error">Tu sesión expiró. Iniciá sesión de nuevo para continuar.</div>
+        )}
         {actionData?.error && <div className="alert alert-error">{actionData.error}</div>}
 
         <label>
