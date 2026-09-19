@@ -35,4 +35,8 @@ public class ProductRequest {
     private Integer reorderLevel;
 
     private Boolean active;
+
+    // Base64 puro (sin el prefijo "data:image/...;base64,"), null si no se cambia la imagen
+    private String imageData;
+    private String imageContentType;
 }

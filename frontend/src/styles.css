@@ -368,3 +368,60 @@ button.secondary:hover { background: #d1d5db; }
   margin: 0;
   color: #374151;
 }
+
+/* ---- Product thumbnails ---- */
+.product-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.product-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  font-size: 1.4rem;
+}
+
+/* ---- Factura ---- */
+.invoice-sheet {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.invoice-header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 2px solid #1e3a5f;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.invoice-customer {
+  margin-bottom: 1.5rem;
+}
+
+.invoice-customer h3 {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+@media print {
+  .navbar, .no-print {
+    display: none !important;
+  }
+  .page {
+    padding: 0;
+    max-width: none;
+  }
+  .invoice-sheet {
+    box-shadow: none;
+  }
+}

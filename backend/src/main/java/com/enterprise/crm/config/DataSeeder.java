@@ -2,6 +2,8 @@ package com.enterprise.crm.config;
 
 import com.enterprise.crm.entity.Activity;
 import com.enterprise.crm.entity.Customer;
+import com.enterprise.crm.entity.Invoice;
+import com.enterprise.crm.entity.InvoiceItem;
 import com.enterprise.crm.entity.Opportunity;
 import com.enterprise.crm.entity.OpportunityProduct;
 import com.enterprise.crm.entity.Product;
@@ -15,6 +17,8 @@ import com.enterprise.crm.enums.RoleName;
 import com.enterprise.crm.enums.StockMovementReason;
 import com.enterprise.crm.repository.ActivityRepository;
 import com.enterprise.crm.repository.CustomerRepository;
+import com.enterprise.crm.repository.InvoiceItemRepository;
+import com.enterprise.crm.repository.InvoiceRepository;
 import com.enterprise.crm.repository.OpportunityProductRepository;
 import com.enterprise.crm.repository.OpportunityRepository;
 import com.enterprise.crm.repository.ProductRepository;
@@ -48,6 +52,8 @@ public class DataSeeder implements CommandLineRunner {
     private final ActivityRepository activityRepository;
     private final OpportunityProductRepository opportunityProductRepository;
     private final StockMovementRepository stockMovementRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final InvoiceItemRepository invoiceItemRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -59,6 +65,7 @@ public class DataSeeder implements CommandLineRunner {
         List<Opportunity> opportunities = seedSampleOpportunities(customers, admin);
         seedSampleActivities(opportunities, admin);
         seedSampleReservations(opportunities, products, admin);
+        seedSampleInvoice(customers, products, admin);
     }
 
     private User seedAdminUser() {
@@ -341,6 +348,49 @@ public class DataSeeder implements CommandLineRunner {
                 .opportunity(opportunity)
                 .quantityChange(-quantity)
                 .reason(StockMovementReason.OPPORTUNITY_RESERVE)
+                .performedBy(actor)
+                .build());
+    }
+
+    private void seedSampleInvoice(List<Customer> customers, List<Product> products, User actor) {
+        if (invoiceRepository.count() > 0 || customers.isEmpty() || products.size() < 2) {
+            return;
+        }
+
+        Customer customer = customers.get(1);
+        Product license = products.get(0); // SKU-001, 2 unidades
+        Product support = products.get(1); // SKU-002, 1 unidad
+
+        BigDecimal total = license.getUnitPrice().multiply(BigDecimal.valueOf(2))
+                .add(support.getUnitPrice().multiply(BigDecimal.valueOf(1)));
+
+        Invoice invoice = invoiceRepository.save(Invoice.builder()
+                .customer(customer)
+                .createdBy(actor)
+                .total(total)
+                .build());
+
+        saveInvoiceLine(invoice, license, 2, actor);
+        saveInvoiceLine(invoice, support, 1, actor);
+
+        System.out.println(">> 1 factura de prueba creada (INV-" + String.format("%06d", invoice.getId()) + ")");
+    }
+
+    private void saveInvoiceLine(Invoice invoice, Product product, int quantity, User actor) {
+        product.setQuantityInStock(product.getQuantityInStock() - quantity);
+        productRepository.save(product);
+
+        invoiceItemRepository.save(InvoiceItem.builder()
+                .invoice(invoice)
+                .product(product)
+                .quantity(quantity)
+                .unitPrice(product.getUnitPrice())
+                .build());
+
+        stockMovementRepository.save(StockMovement.builder()
+                .product(product)
+                .quantityChange(-quantity)
+                .reason(StockMovementReason.INVOICE_SALE)
                 .performedBy(actor)
                 .build());
     }

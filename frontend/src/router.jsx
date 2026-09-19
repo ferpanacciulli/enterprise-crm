@@ -13,6 +13,9 @@ import Customers, { customersLoader, customersAction } from './routes/Customers'
 import Products, { productsLoader, productsAction } from './routes/Products';
 import Opportunities, { opportunitiesLoader, opportunitiesAction } from './routes/Opportunities';
 import OpportunityDetail, { opportunityDetailLoader, opportunityDetailAction } from './routes/OpportunityDetail';
+import Invoices, { invoicesLoader } from './routes/Invoices';
+import InvoiceNew, { invoiceNewLoader, invoiceNewAction } from './routes/InvoiceNew';
+import InvoiceDetail, { invoiceDetailLoader } from './routes/InvoiceDetail';
 
 export const router = createBrowserRouter([
   {
@@ -41,6 +44,9 @@ export const router = createBrowserRouter([
       { path: 'products', element: <Products />, loader: productsLoader, action: productsAction },
       { path: 'opportunities', element: <Opportunities />, loader: opportunitiesLoader, action: opportunitiesAction },
       { path: 'opportunities/:id', element: <OpportunityDetail />, loader: opportunityDetailLoader, action: opportunityDetailAction },
+      { path: 'invoices', element: <Invoices />, loader: invoicesLoader },
+      { path: 'invoices/new', element: <InvoiceNew />, loader: invoiceNewLoader, action: invoiceNewAction },
+      { path: 'invoices/:id', element: <InvoiceDetail />, loader: invoiceDetailLoader },
     ],
   },
   {

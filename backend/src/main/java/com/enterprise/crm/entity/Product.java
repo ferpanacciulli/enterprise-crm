@@ -56,6 +56,21 @@ public class Product {
     @Column(nullable = false)
     private boolean active;
 
+    // Imagen guardada como base64 directo en la base (sin servidor de archivos
+    // aparte). Pensado para fotos chicas de producto, no para catalogos con
+    // cientos de imagenes de alta resolucion.
+    // OJO: sin @Lob a proposito. Con @Lob, Hibernate exige que la columna sea
+    // un CLOB real - pero H2 crea una columna TEXT agregada con ALTER TABLE
+    // como VARCHAR, no CLOB, y eso rompe la validacion del schema al arrancar
+    // ("wrong column type ... found VARCHAR, but expecting CLOB"). Sin @Lob,
+    // Hibernate la trata como un String comun, que funciona igual de bien
+    // contra una columna TEXT tanto en H2 como en Postgres.
+    @Column(name = "image_data", columnDefinition = "TEXT")
+    private String imageData;
+
+    @Column(name = "image_content_type", length = 50)
+    private String imageContentType;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

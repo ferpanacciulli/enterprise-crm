@@ -10,13 +10,30 @@ const EMPTY_FORM = {
   unitPrice: '',
   quantityInStock: '',
   reorderLevel: '',
+  imageDataUrl: '', // "data:image/png;base64,...." completo, o vacio si no tiene foto
 };
 
 const REASON_LABELS = {
   MANUAL_ADJUSTMENT: 'Ajuste manual',
   OPPORTUNITY_RESERVE: 'Reservado en oportunidad',
   OPPORTUNITY_RELEASE: 'Liberado de oportunidad',
+  INVOICE_SALE: 'Venta facturada',
 };
+
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB
+
+function buildImageUrl(product) {
+  if (!product?.imageData) return null;
+  return `data:${product.imageContentType};base64,${product.imageData}`;
+}
+
+// Separa un data URL completo en { contentType, data (base64 puro) }
+function parseDataUrl(dataUrl) {
+  if (!dataUrl) return { contentType: null, data: null };
+  const match = /^data:(.+);base64,(.+)$/.exec(dataUrl);
+  if (!match) return { contentType: null, data: null };
+  return { contentType: match[1], data: match[2] };
+}
 
 export async function productsLoader({ request }) {
   const url = new URL(request.url);
@@ -48,6 +65,8 @@ export async function productsAction({ request }) {
       return { ok: true };
     }
 
+    const { contentType, data } = parseDataUrl(formData.get('imageDataUrl'));
+
     const payload = {
       sku: formData.get('sku'),
       name: formData.get('name'),
@@ -56,6 +75,9 @@ export async function productsAction({ request }) {
       unitPrice: parseFloat(formData.get('unitPrice')),
       quantityInStock: parseInt(formData.get('quantityInStock'), 10),
       reorderLevel: parseInt(formData.get('reorderLevel'), 10),
+      // Si no se toco el campo de imagen, mandamos null y el backend no pisa la que ya tenia
+      imageData: data,
+      imageContentType: contentType,
     };
 
     if (intent === 'update') {
@@ -77,13 +99,16 @@ export default function Products() {
   const formFetcher = useFetcher();
   const stockFetcher = useFetcher();
   const deleteFetcher = useFetcher();
-  const historyFetcher = useFetcher();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') || '');
   const [historyProduct, setHistoryProduct] = useState(null);
+  const [historyData, setHistoryData] = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(null);
+  const [imageError, setImageError] = useState(null);
   const debounceRef = useRef(null);
 
   const fieldErrors = formFetcher.data?.fieldErrors || {};
@@ -99,8 +124,6 @@ export default function Products() {
     setSearchParams(onlyLowStock ? {} : { lowStock: '1' });
   }
 
-  // Debounce simple: espera 350ms de silencio antes de actualizar la URL
-  // (y por lo tanto disparar la revalidacion del loader).
   function handleSearchChange(value) {
     setSearchInput(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -114,6 +137,7 @@ export default function Products() {
   function openCreate() {
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setImageError(null);
     setShowForm(true);
   }
 
@@ -127,12 +151,30 @@ export default function Products() {
       unitPrice: product.unitPrice,
       quantityInStock: product.quantityInStock,
       reorderLevel: product.reorderLevel,
+      imageDataUrl: buildImageUrl(product) || '',
     });
+    setImageError(null);
     setShowForm(true);
   }
 
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function handleImageChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageError('La imagen no puede pesar más de 2MB.');
+      e.target.value = '';
+      return;
+    }
+
+    setImageError(null);
+    const reader = new FileReader();
+    reader.onload = () => update('imageDataUrl', reader.result);
+    reader.readAsDataURL(file);
   }
 
   function handleDelete(id) {
@@ -142,6 +184,21 @@ export default function Products() {
 
   function handleAdjustStock(id, delta) {
     stockFetcher.submit({ intent: 'adjustStock', id, delta }, { method: 'post' });
+  }
+
+  async function openHistory(product) {
+    setHistoryProduct(product);
+    setHistoryData(null);
+    setHistoryError(null);
+    setHistoryLoading(true);
+    try {
+      const data = await api.get(`/api/products/${product.id}/stock-movements`);
+      setHistoryData(data);
+    } catch (err) {
+      setHistoryError(err.message);
+    } finally {
+      setHistoryLoading(false);
+    }
   }
 
   return (
@@ -169,6 +226,7 @@ export default function Products() {
       <table className="data-table">
         <thead>
           <tr>
+            <th></th>
             <th>SKU</th>
             <th>Nombre</th>
             <th>Categoría</th>
@@ -179,41 +237,48 @@ export default function Products() {
           </tr>
         </thead>
         <tbody>
-          {products.map((p) => (
-            <tr key={p.id} className={p.lowStock ? 'row-warning' : ''}>
-              <td>{p.sku}</td>
-              <td>
-                {p.name}
-                {p.lowStock && <span className="badge badge-blocked" style={{ marginLeft: 8 }}>Bajo stock</span>}
-              </td>
-              <td>{p.category}</td>
-              <td>${Number(p.unitPrice).toFixed(2)}</td>
-              <td>
-                <div className="stock-controls">
-                  <button type="button" className="icon-btn" onClick={() => handleAdjustStock(p.id, -1)}>-</button>
-                  <span>{p.quantityInStock}</span>
-                  <button type="button" className="icon-btn" onClick={() => handleAdjustStock(p.id, 1)}>+</button>
-                </div>
-              </td>
-              <td>{p.reorderLevel}</td>
-              <td className="actions">
-                <button
-                  className="link-btn"
-                  onClick={() => {
-                    setHistoryProduct(p);
-                    historyFetcher.load(`/api/products/${p.id}/stock-movements`);
-                  }}
-                >
-                  Historial
-                </button>
-                <button className="link-btn" onClick={() => openEdit(p)}>Editar</button>
-                <button className="link-btn link-btn-danger" onClick={() => handleDelete(p.id)}>Eliminar</button>
-              </td>
-            </tr>
-          ))}
+          {products.map((p) => {
+            const imageUrl = buildImageUrl(p);
+            return (
+              <tr key={p.id} className={p.lowStock ? 'row-warning' : ''}>
+                <td>
+                  {imageUrl ? (
+                    <img src={imageUrl} alt={p.name} className="product-thumb" />
+                  ) : (
+                    <div className="product-thumb product-thumb-placeholder">📦</div>
+                  )}
+                </td>
+                <td>{p.sku}</td>
+                <td>
+                  {p.name}
+                  {p.lowStock && <span className="badge badge-blocked" style={{ marginLeft: 8 }}>Bajo stock</span>}
+                </td>
+                <td>{p.category}</td>
+                <td>${Number(p.unitPrice).toFixed(2)}</td>
+                <td>
+                  <div className="stock-controls">
+                    <button type="button" className="icon-btn" onClick={() => handleAdjustStock(p.id, -1)}>-</button>
+                    <span>{p.quantityInStock}</span>
+                    <button type="button" className="icon-btn" onClick={() => handleAdjustStock(p.id, 1)}>+</button>
+                  </div>
+                </td>
+                <td>{p.reorderLevel}</td>
+                <td className="actions">
+                  <button
+                    className="link-btn"
+                    onClick={() => openHistory(p)}
+                  >
+                    Historial
+                  </button>
+                  <button className="link-btn" onClick={() => openEdit(p)}>Editar</button>
+                  <button className="link-btn link-btn-danger" onClick={() => handleDelete(p.id)}>Eliminar</button>
+                </td>
+              </tr>
+            );
+          })}
           {products.length === 0 && (
             <tr>
-              <td colSpan={7} className="empty-state">No hay productos para mostrar.</td>
+              <td colSpan={8} className="empty-state">No hay productos para mostrar.</td>
             </tr>
           )}
         </tbody>
@@ -226,6 +291,16 @@ export default function Products() {
 
             <input type="hidden" name="intent" value={editingId ? 'update' : 'create'} />
             {editingId && <input type="hidden" name="id" value={editingId} />}
+            <input type="hidden" name="imageDataUrl" value={form.imageDataUrl} />
+
+            <label>
+              Foto (opcional, máx 2MB)
+              {form.imageDataUrl && (
+                <img src={form.imageDataUrl} alt="preview" className="product-thumb" style={{ display: 'block', marginBottom: 6 }} />
+              )}
+              <input type="file" accept="image/*" onChange={handleImageChange} />
+              {imageError && <span className="field-error">{imageError}</span>}
+            </label>
 
             <label>
               SKU
@@ -278,11 +353,12 @@ export default function Products() {
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h2>Historial de stock — {historyProduct.name}</h2>
 
-            {historyFetcher.state === 'loading' && <p>Cargando...</p>}
+            {historyLoading && <p>Cargando...</p>}
+            {historyError && <div className="alert alert-error">{historyError}</div>}
 
-            {historyFetcher.data && (
+            {historyData && (
               <div className="timeline">
-                {historyFetcher.data.map((m) => (
+                {historyData.map((m) => (
                   <div key={m.id} className="timeline-item">
                     <div className="timeline-header">
                       <strong>
@@ -293,7 +369,7 @@ export default function Products() {
                     {m.opportunityTitle && <p>Oportunidad: {m.opportunityTitle}</p>}
                   </div>
                 ))}
-                {historyFetcher.data.length === 0 && (
+                {historyData.length === 0 && (
                   <p className="empty-state">Todavía no hay movimientos registrados para este producto.</p>
                 )}
               </div>

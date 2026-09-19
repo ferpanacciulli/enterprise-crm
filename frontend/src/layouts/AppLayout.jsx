@@ -26,6 +26,9 @@ export default function AppLayout() {
           <NavLink to="/products" className={({ isActive }) => (isActive ? 'active' : '')}>
             Inventario
           </NavLink>
+          <NavLink to="/invoices" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Facturas
+          </NavLink>
         </div>
         <div className="navbar-user">
           <span>

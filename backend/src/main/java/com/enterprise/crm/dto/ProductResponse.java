@@ -21,6 +21,8 @@ public class ProductResponse {
     private Integer reorderLevel;
     private boolean active;
     private boolean lowStock;
+    private String imageData;
+    private String imageContentType;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
