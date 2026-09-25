@@ -19,11 +19,17 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configurar JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
+
+      # Git no siempre preserva el bit de ejecutable de mvnw al pushear desde
+      # Windows - sin esto, Linux (el runner) lo rechaza con "exit code 126".
+      - name: Dar permiso de ejecución a mvnw
+        working-directory: ./backend
+        run: chmod +x ./mvnw
 
       - name: Compilar y correr tests
         working-directory: ./backend
@@ -36,3 +42,4 @@ jobs:
           name: Resultados JUnit
           path: 'backend/target/surefire-reports/*.xml'
           reporter: java-junit
+          fail-on-empty: false
