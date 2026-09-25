@@ -1,0 +1,20 @@
+# Blueprint de Render (https://render.com/docs/blueprint-spec).
+# Al conectar el repo, Render puede leer este archivo y armar el servicio solo.
+services:
+  - type: web
+    name: enterprise-crm-backend
+    runtime: java
+    plan: free
+    buildCommand: cd backend && ./mvnw clean package -DskipTests
+    startCommand: cd backend && java -Dserver.port=$PORT -jar target/*.jar
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: postgresql
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true

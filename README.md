@@ -32,8 +32,7 @@ Para usar PostgreSQL en cambio, con Docker corriendo (`docker compose up -d` des
 
 ```powershell
 cd backend
-Remove-Item -Recurse -Force target, data -ErrorAction SilentlyContinue
-.\mvnw.cmd clean spring-boot:run
+.\mvnw.cmd spring-boot:run
 ```
 
 Con el perfil `h2` (default), esto ya alcanza — no necesitás Docker ni nada instalado, H2 se crea sola como un archivo en `backend/data/`.
@@ -66,7 +65,9 @@ La app queda en `http://localhost:5173`. Ya viene configurada (`.env`) para habl
 - Historial de **mensajes/interacciones** por oportunidad (`/api/opportunities/{id}/activities`) — llamadas, emails, reuniones, tareas, notas
 - CRUD completo de **Inventario / Productos** (`/api/products`), con búsqueda por nombre/SKU/categoría y endpoint de bajo stock
 - **Reserva automática de stock**: agregar un producto a una oportunidad (`/api/opportunities/{id}/products`) descuenta el stock al instante; sacarlo o borrar la oportunidad lo devuelve
-- **Historial de movimientos de stock** por producto (`/api/products/{id}/stock-movements`) — ajustes manuales y reservas/liberaciones automáticas, con quién y cuándo
+- **Historial de movimientos de stock** por producto (`/api/products/{id}/stock-movements`) — ajustes manuales, reservas/liberaciones automáticas y ventas facturadas, con quién y cuándo
+- **Foto de producto**: se sube como archivo y se guarda en base64 en la propia base (sin servidor de archivos aparte) — límite recomendado 2MB por imagen
+- **Facturación** (`/api/invoices`): elegís cliente + productos con cantidad, se valida stock de todas las líneas antes de tocar nada, se descuenta el inventario, y queda la factura con numeración correlativa (`INV-000001`)
 - Manejo global de excepciones (404, 400 con detalle de campo, 409 duplicados, 401 credenciales) con logging real de errores no controlados
 - Entities de Notification y AuditLog ya modeladas (repository listo), pendientes de su propio CRUD
 
@@ -75,7 +76,8 @@ La app queda en `http://localhost:5173`. Ya viene configurada (`.env`) para habl
 - Dashboard con métricas (clientes, oportunidades abiertas, valor del pipeline, productos, bajo stock)
 - Gestión de Clientes (alta, edición, baja)
 - Gestión de Oportunidades (alta con selector de cliente, edición, baja) + vista de detalle con productos reservados y el timeline de mensajes
-- Gestión de Inventario (alta, edición, baja, ajuste rápido de stock +/-, filtro de bajo stock, buscador con debounce, modal de historial de movimientos)
+- Gestión de Inventario (alta, edición, baja, foto de producto, ajuste rápido de stock +/-, filtro de bajo stock, buscador con debounce, modal de historial de movimientos)
+- **Facturación**: armado de factura con líneas dinámicas (agregar/quitar productos antes de confirmar), y una vista de detalle imprimible (`window.print()`, con CSS de impresión que oculta la navbar)
 
 **Frontend** — React 19 + React Router 7 en **modo data router** (`createBrowserRouter` / `RouterProvider`), no el modo declarativo clásico:
 - **Loaders**: cada ruta carga sus datos (`useLoaderData`) antes de renderizar — no hay `useEffect` + `useState` para el fetch inicial en ninguna pantalla.
@@ -84,6 +86,25 @@ La app queda en `http://localhost:5173`. Ya viene configurada (`.env`) para habl
 - **`errorElement`**: si un loader tira un error (ej: la API cae, o el token expiró), lo atrapa una pantalla de error declarativa en vez de que la SPA quede en un estado roto.
 - **Estado en la URL**: el filtro "solo bajo stock" de Inventario vive en el query string (`?lowStock=1`) vía `useSearchParams`, así que es bookmarkeable y dispara la revalidación del loader automáticamente.
 - Login / Registro / Dashboard con métricas / CRUD de Clientes / CRUD de Inventario
+
+## Tests
+
+```powershell
+cd backend
+.\mvnw.cmd test
+```
+
+Hay dos capas:
+- **Unitarios** (`ProductServiceTest`, `AuthServiceTest`, `OpportunityProductServiceTest`) — con Mockito, sin levantar Spring. Cubren la lógica de negocio más sensible: stock insuficiente, duplicados, la reserva/liberación automática de inventario.
+- **De integración** (`AuthControllerIntegrationTest`, `ProductControllerIntegrationTest`) — levantan el contexto completo de Spring contra un H2 en memoria propio de los tests (perfil `test`, ver `src/test/resources/application-test.yml`), y pegan HTTP real contra los endpoints.
+
+## CI
+
+`.github/workflows/backend-ci.yml` y `frontend-ci.yml` corren en cada push/PR a `main`: compilan y testean el backend, y hacen el build de producción del frontend. Se activan solos apenas el repo esté en GitHub — no hace falta configurar nada.
+
+## Deploy
+
+Ver [`DEPLOY.md`](./DEPLOY.md) — guía paso a paso para backend en Railway (con Postgres gestionado) y frontend en Vercel. Esa parte requiere tus propias cuentas, no se puede automatizar del todo.
 
 ## Bug corregido en esta versión
 

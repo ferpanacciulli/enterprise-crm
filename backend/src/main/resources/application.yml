@@ -28,10 +28,13 @@ management:
         include: health,info
 
 jwt:
-  secret: XdN2vFfiwfAIPxMgCLWdwH1hvi96jAC9lK34kaD3f2vDXcXR7vwuoRw2whdKGluYjhNRyrACvsvyKdOmKFX4xg==
-  expiration-ms: 86400000
+  # El valor de la derecha (":...") es SOLO para desarrollo local. En cualquier
+  # despliegue real, seteá la variable de entorno JWT_SECRET con un valor propio
+  # generado - nunca reutilices este ni lo dejes como el secreto real en produccion.
+  secret: ${JWT_SECRET:XdN2vFfiwfAIPxMgCLWdwH1hvi96jAC9lK34kaD3f2vDXcXR7vwuoRw2whdKGluYjhNRyrACvsvyKdOmKFX4xg==}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 logging:
   level:
-    org.springframework.security: DEBUG
-    com.enterprise.crm.security: DEBUG
+    org.springframework.security: ${SECURITY_LOG_LEVEL:INFO}
+    com.enterprise.crm.security: ${SECURITY_LOG_LEVEL:INFO}

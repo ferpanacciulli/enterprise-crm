@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+jwt:
+  secret: FaU1YKJbx6pp2cp7nHjAiBzGeFrlhUyuhrv2E1tq5SE1bJK6Ypt7BelXo/DQjSd4AOAPSJAOt4pV+gNs5w7NRg==
+  expiration-ms: 3600000
