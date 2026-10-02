@@ -11,7 +11,7 @@ const EMPTY_FORM = {
   unitPrice: '',
   quantityInStock: '',
   reorderLevel: '',
-  imageDataUrl: '', // "data:image/png;base64,...." completo, o vacio si no tiene foto
+  imageDataUrl: '', // "data:image/png;base64,...." completo, o vacio si no tiene foto. Se parsea en el action para mandar solo el base64 y contentType al backend.
 };
 
 const REASON_LABELS = {
@@ -94,10 +94,11 @@ export async function productsAction({ request }) {
 
 export default function Products() {
   const products = useLoaderData();
-  // CRUD + ajuste de stock es ADMIN/MANAGER en el backend; SALES solo consulta.
+  // Catalogo de productos: ADMIN/MANAGER crean, editan, ajustan stock y borran;
+  // SALES solo consulta (no toca el catalogo).
   const currentRole = getStoredUser()?.role;
-  const canWrite = currentRole === 'ADMIN' || currentRole === 'MANAGER';
-  const canDelete = currentRole === 'ADMIN';
+  const canWrite = ['ADMIN', 'MANAGER'].includes(currentRole);
+  const canDelete = ['ADMIN', 'MANAGER'].includes(currentRole);
   const [searchParams, setSearchParams] = useSearchParams();
   const onlyLowStock = searchParams.get('lowStock') === '1';
 

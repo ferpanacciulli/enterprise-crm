@@ -55,8 +55,10 @@ export async function customersAction({ request }) {
 export default function Customers() {
   const customers = useLoaderData();
   const currentRole = getStoredUser()?.role;
-  const canWrite = currentRole === 'ADMIN' || currentRole === 'MANAGER';
-  const canDelete = currentRole === 'ADMIN';
+  // Todos los roles crean/editan clientes (registro de leads del CRM);
+  // solo ADMIN y MANAGER pueden eliminar
+  const canWrite = ['ADMIN', 'MANAGER', 'SALES_REPRESENTATIVE'].includes(currentRole);
+  const canDelete = ['ADMIN', 'MANAGER'].includes(currentRole);
   const formFetcher = useFetcher();
   const deleteFetcher = useFetcher();
 
