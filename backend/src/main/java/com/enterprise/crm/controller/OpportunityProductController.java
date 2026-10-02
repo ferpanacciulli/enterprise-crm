@@ -6,6 +6,7 @@ import com.enterprise.crm.service.OpportunityProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,6 +35,7 @@ public class OpportunityProductController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SALES_REPRESENTATIVE')")
     public OpportunityProductResponse addProduct(
             @PathVariable Long opportunityId,
             @Valid @RequestBody OpportunityProductRequest request,
@@ -43,6 +45,7 @@ public class OpportunityProductController {
 
     @DeleteMapping("/{itemId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SALES_REPRESENTATIVE')")
     public void removeProduct(
             @PathVariable Long opportunityId,
             @PathVariable Long itemId,

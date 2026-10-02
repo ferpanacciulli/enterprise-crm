@@ -39,11 +39,13 @@ public class OpportunityController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SALES_REPRESENTATIVE')")
     public OpportunityResponse create(@Valid @RequestBody OpportunityRequest request, Authentication authentication) {
         return opportunityService.create(request, authentication.getName());
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SALES_REPRESENTATIVE')")
     public OpportunityResponse update(@PathVariable Long id, @Valid @RequestBody OpportunityRequest request) {
         return opportunityService.update(id, request);
     }

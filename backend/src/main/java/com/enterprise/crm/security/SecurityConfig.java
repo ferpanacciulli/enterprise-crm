@@ -12,10 +12,19 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @RequiredArgsConstructor
-// Habilita @PreAuthorize/@PostAuthorize en los controllers. Sin esto, Spring
-// Security autentica pero NO autoriza por metodo: cualquier usuario logueado
-// podia borrar clientes, editar inventario, etc. El control fino de permisos
-// vive ahora en cada endpoint (ver los @PreAuthorize en los controllers).
+// Habilita @PreAuthorize en los controllers. Sin esto, Spring Security
+// autentica pero NO autoriza por metodo: cualquier usuario logueado podia
+// borrar clientes, editar inventario, etc.
+//
+// REGLA UNICA DE PERMISOS (cada endpoint de escritura lleva su @PreAuthorize):
+//   1. ADMIN + MANAGER + SALES -> trabajo diario del vendedor: crear/editar
+//      clientes, oportunidades, actividades, reservas de producto y facturas.
+//   2. ADMIN + MANAGER         -> gobernanza: mantener el catalogo de productos
+//      (crear/editar/stock) y BORRAR registros de negocio (clientes, productos,
+//      oportunidades). SALES no borra ni toca el catalogo.
+//   3. SOLO ADMIN              -> bitacora de auditoria (/api/audit-logs).
+//   Los GET (lectura) no llevan anotacion: quedan abiertos a cualquier rol
+//   autenticado (ver anyRequest().authenticated() mas abajo).
 @EnableMethodSecurity
 public class SecurityConfig {
 
