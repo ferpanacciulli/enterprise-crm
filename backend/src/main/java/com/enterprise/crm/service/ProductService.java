@@ -28,6 +28,7 @@ public class ProductService {
     private final StockMovementRepository stockMovementRepository;
     private final UserRepository userRepository;
     private final ProductMapper productMapper;
+    private final AuditService auditService;
 
     public List<ProductResponse> findAll(String search) {
         List<Product> products = (search == null || search.isBlank())
@@ -62,19 +63,28 @@ public class ProductService {
         if (request.getActive() == null) {
             product.setActive(true);
         }
-        return productMapper.toResponse(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        auditService.record("Product", saved.getId(), "CREATE",
+                "Alta de producto: " + saved.getName() + " (SKU " + saved.getSku() + ")");
+        return productMapper.toResponse(saved);
     }
 
     @Transactional
     public ProductResponse update(Long id, ProductRequest request) {
         Product product = getEntityOrThrow(id);
         productMapper.updateEntityFromRequest(request, product);
-        return productMapper.toResponse(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        auditService.record("Product", saved.getId(), "UPDATE",
+                "Edición de producto: " + saved.getName());
+        return productMapper.toResponse(saved);
     }
 
     @Transactional
     public void delete(Long id) {
-        productRepository.delete(getEntityOrThrow(id));
+        Product product = getEntityOrThrow(id);
+        auditService.record("Product", product.getId(), "DELETE",
+                "Baja de producto: " + product.getName());
+        productRepository.delete(product);
     }
 
     @Transactional
@@ -92,6 +102,10 @@ public class ProductService {
         productRepository.save(product);
 
         logMovement(product, null, delta, StockMovementReason.MANUAL_ADJUSTMENT, actingUserEmail);
+
+        auditService.record("Product", product.getId(), "STOCK_ADJUST",
+                "Ajuste manual de stock: " + (delta >= 0 ? "+" : "") + delta
+                        + " -> " + newQuantity + " unidades");
 
         return productMapper.toResponse(product);
     }

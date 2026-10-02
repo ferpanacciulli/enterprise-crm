@@ -29,6 +29,11 @@ export default function AppLayout() {
           <NavLink to="/invoices" className={({ isActive }) => (isActive ? 'active' : '')}>
             Facturas
           </NavLink>
+          {user?.role === 'ADMIN' && (
+            <NavLink to="/audit-logs" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Auditoría
+            </NavLink>
+          )}
         </div>
         <div className="navbar-user">
           <span>

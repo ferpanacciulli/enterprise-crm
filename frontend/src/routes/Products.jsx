@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLoaderData, useFetcher, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
+import { getStoredUser } from '../lib/session';
 
 const EMPTY_FORM = {
   sku: '',
@@ -93,12 +94,17 @@ export async function productsAction({ request }) {
 
 export default function Products() {
   const products = useLoaderData();
+  // CRUD + ajuste de stock es ADMIN/MANAGER en el backend; SALES solo consulta.
+  const currentRole = getStoredUser()?.role;
+  const canWrite = currentRole === 'ADMIN' || currentRole === 'MANAGER';
+  const canDelete = currentRole === 'ADMIN';
   const [searchParams, setSearchParams] = useSearchParams();
   const onlyLowStock = searchParams.get('lowStock') === '1';
 
   const formFetcher = useFetcher();
   const stockFetcher = useFetcher();
   const deleteFetcher = useFetcher();
+  const isReadOnlyEmpty = !canWrite && products.length === 0;
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -217,11 +223,23 @@ export default function Products() {
             <input type="checkbox" checked={onlyLowStock} onChange={toggleLowStock} />
             Solo bajo stock
           </label>
-          <button onClick={openCreate}>+ Nuevo producto</button>
+          <button onClick={openCreate} disabled={!canWrite} title={canWrite ? '' : 'Tu rol es de solo lectura'}>+ Nuevo producto</button>
         </div>
       </div>
 
       {stockFetcher.data?.error && <div className="alert alert-error">{stockFetcher.data.error}</div>}
+
+      {isReadOnlyEmpty && (
+        <div className="alert alert-error">
+          Tu rol ({currentRole}) es de solo lectura en esta sección: podés consultar y ver el historial, pero no modificar el inventario.
+        </div>
+      )}
+
+      {(formFetcher.data?.error || stockFetcher.data?.error || deleteFetcher.data?.error) && (
+        <div className="alert alert-error">
+          {formFetcher.data?.error || stockFetcher.data?.error || deleteFetcher.data?.error}
+        </div>
+      )}
 
       <table className="data-table">
         <thead>
@@ -257,9 +275,9 @@ export default function Products() {
                 <td>${Number(p.unitPrice).toFixed(2)}</td>
                 <td>
                   <div className="stock-controls">
-                    <button type="button" className="icon-btn" onClick={() => handleAdjustStock(p.id, -1)}>-</button>
+                    <button type="button" className="icon-btn" onClick={() => handleAdjustStock(p.id, -1)} disabled={!canWrite}>-</button>
                     <span>{p.quantityInStock}</span>
-                    <button type="button" className="icon-btn" onClick={() => handleAdjustStock(p.id, 1)}>+</button>
+                    <button type="button" className="icon-btn" onClick={() => handleAdjustStock(p.id, 1)} disabled={!canWrite}>+</button>
                   </div>
                 </td>
                 <td>{p.reorderLevel}</td>
@@ -270,8 +288,8 @@ export default function Products() {
                   >
                     Historial
                   </button>
-                  <button className="link-btn" onClick={() => openEdit(p)}>Editar</button>
-                  <button className="link-btn link-btn-danger" onClick={() => handleDelete(p.id)}>Eliminar</button>
+                  <button className="link-btn" onClick={() => openEdit(p)} disabled={!canWrite}>Editar</button>
+                  {canDelete && <button className="link-btn link-btn-danger" onClick={() => handleDelete(p.id)}>Eliminar</button>}
                 </td>
               </tr>
             );

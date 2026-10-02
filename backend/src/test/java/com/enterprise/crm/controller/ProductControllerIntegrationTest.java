@@ -31,8 +31,22 @@ class ProductControllerIntegrationTest {
         return "http://localhost:" + port + path;
     }
 
-    /** Se registra un usuario nuevo por test y devuelve su token, para no depender del admin sembrado. */
-    private String obtenerToken(String email) {
+    /**
+     * El CRUD de inventario ahora exige rol ADMIN o MANAGER (@PreAuthorize), asi
+     * que estos tests se autentican con el admin que siembra el DataSeeder
+     * (admin@crm.com / Admin123!) en vez de registrarse como SALES_REPRESENTATIVE.
+     */
+    private String obtenerTokenAdmin() {
+        Map<String, Object> loginBody = Map.of(
+                "email", "admin@crm.com",
+                "password", "Admin123!"
+        );
+        ResponseEntity<Map> response = restTemplate.postForEntity(url("/auth/login"), loginBody, Map.class);
+        return (String) response.getBody().get("token");
+    }
+
+    /** Registra un usuario nuevo (rol por defecto SALES_REPRESENTATIVE) y devuelve su token. */
+    private String registrarSalesRep(String email) {
         Map<String, Object> registerBody = Map.of(
                 "firstName", "Test",
                 "lastName", "User",
@@ -51,7 +65,7 @@ class ProductControllerIntegrationTest {
 
     @Test
     void crearProducto_yLuegoAjustarStockDeMas_devuelve400() {
-        String token = obtenerToken("product-test-1@crm.com");
+        String token = obtenerTokenAdmin();
 
         Map<String, Object> productBody = Map.of(
                 "sku", "SKU-INTEGRATION-1",
@@ -80,7 +94,7 @@ class ProductControllerIntegrationTest {
 
     @Test
     void crearProductoConSkuDuplicado_devuelve409() {
-        String token = obtenerToken("product-test-2@crm.com");
+        String token = obtenerTokenAdmin();
 
         Map<String, Object> productBody = Map.of(
                 "sku", "SKU-INTEGRATION-DUP",
@@ -102,7 +116,7 @@ class ProductControllerIntegrationTest {
 
     @Test
     void crearProductoSinNombre_devuelve400ConDetalleDeCampo() {
-        String token = obtenerToken("product-test-3@crm.com");
+        String token = obtenerTokenAdmin();
 
         Map<String, Object> invalidBody = Map.of(
                 "sku", "SKU-SIN-NOMBRE",
@@ -123,12 +137,33 @@ class ProductControllerIntegrationTest {
 
     @Test
     void listarProductos_conTokenValido_devuelve200() {
-        String token = obtenerToken("product-test-4@crm.com");
+        String token = obtenerTokenAdmin();
 
         ResponseEntity<List> response = restTemplate.exchange(
                 url("/api/products"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(token)), List.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void crearProducto_comoSalesRepresentative_devuelve403() {
+        // Un SALES_REPRESENTATIVE esta autenticado, pero no puede tocar el
+        // inventario: eso ahora lo corta @PreAuthorize con un 403.
+        String token = registrarSalesRep("sales-rep-403@crm.com");
+
+        Map<String, Object> productBody = Map.of(
+                "sku", "SKU-403",
+                "name", "No deberia crearse",
+                "unitPrice", 10.0,
+                "quantityInStock", 1,
+                "reorderLevel", 1
+        );
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                url("/api/products"), HttpMethod.POST,
+                new HttpEntity<>(productBody, authHeaders(token)), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 }

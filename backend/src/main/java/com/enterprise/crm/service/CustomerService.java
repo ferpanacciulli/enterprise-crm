@@ -19,6 +19,7 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final CustomerMapper customerMapper;
+    private final AuditService auditService;
 
     public List<CustomerResponse> findAll() {
         return customerRepository.findAll()
@@ -34,19 +35,27 @@ public class CustomerService {
     @Transactional
     public CustomerResponse create(CustomerRequest request) {
         Customer customer = customerMapper.toEntity(request);
-        return customerMapper.toResponse(customerRepository.save(customer));
+        Customer saved = customerRepository.save(customer);
+        auditService.record("Customer", saved.getId(), "CREATE",
+                "Alta de cliente: " + saved.getCompanyName());
+        return customerMapper.toResponse(saved);
     }
 
     @Transactional
     public CustomerResponse update(Long id, CustomerRequest request) {
         Customer customer = getEntityOrThrow(id);
         customerMapper.updateEntityFromRequest(request, customer);
-        return customerMapper.toResponse(customerRepository.save(customer));
+        Customer saved = customerRepository.save(customer);
+        auditService.record("Customer", saved.getId(), "UPDATE",
+                "Edición de cliente: " + saved.getCompanyName());
+        return customerMapper.toResponse(saved);
     }
 
     @Transactional
     public void delete(Long id) {
         Customer customer = getEntityOrThrow(id);
+        auditService.record("Customer", customer.getId(), "DELETE",
+                "Baja de cliente: " + customer.getCompanyName());
         customerRepository.delete(customer);
     }
 

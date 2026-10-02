@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLoaderData, useFetcher } from 'react-router-dom';
 import { api } from '../lib/api';
+import { getStoredUser } from '../lib/session';
 
 const EMPTY_FORM = {
   title: '',
@@ -51,6 +52,8 @@ export async function opportunitiesAction({ request }) {
 
 export default function Opportunities() {
   const { opportunities, customers } = useLoaderData();
+  // DELETE de oportunidades es ADMIN/MANAGER en el backend; SALES crea y edita.
+  const canDelete = ['ADMIN', 'MANAGER'].includes(getStoredUser()?.role);
   const formFetcher = useFetcher();
   const deleteFetcher = useFetcher();
 
@@ -107,6 +110,10 @@ export default function Opportunities() {
         </div>
       )}
 
+      {deleteFetcher.data?.error && (
+        <div className="alert alert-error">{deleteFetcher.data.error}</div>
+      )}
+
       <table className="data-table">
         <thead>
           <tr>
@@ -130,7 +137,9 @@ export default function Opportunities() {
               <td>{o.ownerName}</td>
               <td className="actions">
                 <button className="link-btn" onClick={() => openEdit(o)}>Editar</button>
-                <button className="link-btn link-btn-danger" onClick={() => handleDelete(o.id)}>Eliminar</button>
+                {canDelete && (
+                  <button className="link-btn link-btn-danger" onClick={() => handleDelete(o.id)}>Eliminar</button>
+                )}
               </td>
             </tr>
           ))}

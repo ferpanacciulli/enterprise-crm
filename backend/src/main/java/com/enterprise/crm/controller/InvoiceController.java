@@ -2,10 +2,14 @@ package com.enterprise.crm.controller;
 
 import com.enterprise.crm.dto.InvoiceRequest;
 import com.enterprise.crm.dto.InvoiceResponse;
+import com.enterprise.crm.service.InvoicePdfService;
 import com.enterprise.crm.service.InvoiceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,6 +27,7 @@ import java.util.List;
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
+    private final InvoicePdfService invoicePdfService;
 
     @GetMapping
     public List<InvoiceResponse> findAll() {
@@ -38,5 +43,21 @@ public class InvoiceController {
     @ResponseStatus(HttpStatus.CREATED)
     public InvoiceResponse create(@Valid @RequestBody InvoiceRequest request, Authentication authentication) {
         return invoiceService.create(request, authentication.getName());
+    }
+
+    /**
+     * PDF generado en el servidor (archivable / enviable por mail), no el
+     * window.print() del navegador.
+     */
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> downloadPdf(@PathVariable Long id) {
+        InvoiceResponse invoice = invoiceService.findById(id);
+        byte[] pdf = invoicePdfService.generate(invoice);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + invoice.getInvoiceNumber() + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

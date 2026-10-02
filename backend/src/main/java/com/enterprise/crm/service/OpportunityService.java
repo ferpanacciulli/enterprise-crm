@@ -26,6 +26,7 @@ public class OpportunityService {
     private final UserRepository userRepository;
     private final OpportunityMapper opportunityMapper;
     private final OpportunityProductService opportunityProductService;
+    private final AuditService auditService;
 
     public List<OpportunityResponse> findAll() {
         return opportunityRepository.findAll().stream()
@@ -50,7 +51,10 @@ public class OpportunityService {
         opportunity.setCustomer(customer);
         opportunity.setOwner(owner);
 
-        return opportunityMapper.toResponse(opportunityRepository.save(opportunity));
+        Opportunity saved = opportunityRepository.save(opportunity);
+        auditService.record("Opportunity", saved.getId(), "CREATE",
+                "Alta de oportunidad: " + saved.getTitle());
+        return opportunityMapper.toResponse(saved);
     }
 
     @Transactional
@@ -65,7 +69,10 @@ public class OpportunityService {
         }
 
         opportunityMapper.updateEntityFromRequest(request, opportunity);
-        return opportunityMapper.toResponse(opportunityRepository.save(opportunity));
+        Opportunity saved = opportunityRepository.save(opportunity);
+        auditService.record("Opportunity", saved.getId(), "UPDATE",
+                "Edición de oportunidad: " + saved.getTitle());
+        return opportunityMapper.toResponse(saved);
     }
 
     @Transactional
@@ -74,6 +81,8 @@ public class OpportunityService {
         // Libera cualquier stock reservado por esta oportunidad antes de borrarla,
         // para que ese inventario no quede perdido para siempre.
         opportunityProductService.releaseAll(id, actingUserEmail);
+        auditService.record("Opportunity", opportunity.getId(), "DELETE",
+                "Baja de oportunidad: " + opportunity.getTitle());
         opportunityRepository.delete(opportunity);
     }
 

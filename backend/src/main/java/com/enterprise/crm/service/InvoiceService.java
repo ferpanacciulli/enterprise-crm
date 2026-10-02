@@ -35,6 +35,7 @@ public class InvoiceService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final ProductService productService;
+    private final AuditService auditService;
 
     public List<InvoiceResponse> findAll() {
         return invoiceRepository.findAll().stream()
@@ -100,6 +101,10 @@ public class InvoiceService {
                     .unitPrice(product.getUnitPrice())
                     .build());
         }
+
+        auditService.record("Invoice", invoice.getId(), "CREATE",
+                "Factura INV-" + String.format("%06d", invoice.getId())
+                        + " por $" + total + " para " + customer.getCompanyName());
 
         return toResponseWithItems(invoice);
     }

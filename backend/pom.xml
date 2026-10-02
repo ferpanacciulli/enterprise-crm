@@ -23,6 +23,7 @@
         <jjwt.version>0.12.7</jjwt.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <springdoc.version>2.8.9</springdoc.version>
+        <openpdf.version>2.0.3</openpdf.version>
     </properties>
 
     <dependencies>
@@ -122,6 +123,16 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- PDF del lado del servidor (facturas descargables / archivables).
+             OpenPDF es la continuacion LGPL/MPL de iText 4. Evitamos iText 7+
+             porque su licencia AGPL es incompatible con vender el producto. -->
+
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>${openpdf.version}</version>
         </dependency>
 
         <!-- Lombok -->

@@ -16,6 +16,7 @@ import OpportunityDetail, { opportunityDetailLoader, opportunityDetailAction } f
 import Invoices, { invoicesLoader } from './routes/Invoices';
 import InvoiceNew, { invoiceNewLoader, invoiceNewAction } from './routes/InvoiceNew';
 import InvoiceDetail, { invoiceDetailLoader } from './routes/InvoiceDetail';
+import AuditLogs, { auditLogsLoader } from './routes/AuditLogs';
 
 export const router = createBrowserRouter([
   {
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
       { path: 'invoices', element: <Invoices />, loader: invoicesLoader },
       { path: 'invoices/new', element: <InvoiceNew />, loader: invoiceNewLoader, action: invoiceNewAction },
       { path: 'invoices/:id', element: <InvoiceDetail />, loader: invoiceDetailLoader },
+      { path: 'audit-logs', element: <AuditLogs />, loader: auditLogsLoader },
     ],
   },
   {

@@ -1,5 +1,6 @@
 import { Link, useLoaderData } from 'react-router-dom';
-import { api } from '../lib/api';
+import { API_URL, api } from '../lib/api';
+import { getToken } from '../lib/session';
 
 export async function invoiceDetailLoader({ params }) {
   return api.get(`/api/invoices/${params.id}`);
@@ -8,11 +9,36 @@ export async function invoiceDetailLoader({ params }) {
 export default function InvoiceDetail() {
   const invoice = useLoaderData();
 
+  // El PDF se genera en el servidor (OpenPDF) y se descarga como archivo —
+  // no es window.print(). Se usa fetch + blob porque hay que adjuntar el JWT,
+  // que un <a href> directo no puede mandar.
+  async function downloadPdf() {
+    const response = await fetch(`${API_URL}/api/invoices/${invoice.id}/pdf`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (!response.ok) {
+      alert('No se pudo descargar el PDF.');
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${invoice.invoiceNumber}.pdf`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="page">
       <div className="no-print" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
         <Link to="/invoices">&larr; Volver a facturas</Link>
-        <button onClick={() => window.print()}>Imprimir</button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button onClick={downloadPdf}>Descargar PDF</button>
+          <button className="secondary" onClick={() => window.print()}>Imprimir</button>
+        </div>
       </div>
 
       <div className="invoice-sheet">

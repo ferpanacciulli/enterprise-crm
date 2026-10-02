@@ -15,6 +15,9 @@ import com.enterprise.crm.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +38,13 @@ public class AuthService {
             throw new DuplicateResourceException("Ya existe un usuario con ese email");
         }
 
-        RoleName roleName = request.getRole() != null ? request.getRole() : RoleName.SALES_REPRESENTATIVE;
+        // SEGURIDAD: el registro publico NO puede auto-asignarse privilegios.
+        // Si el que registra no es ADMIN, cualquier rol pedido en el payload se
+        // ignora y se cae al rol por defecto (SALES_REPRESENTATIVE). Antes, un
+        // visitante anonimo podia mandar role=ADMIN y crearse una cuenta admin.
+        RoleName requested = request.getRole() != null ? request.getRole() : RoleName.SALES_REPRESENTATIVE;
+        RoleName roleName = isCurrentUserAdmin() ? requested : RoleName.SALES_REPRESENTATIVE;
+
         Role role = roleRepository.findByName(roleName)
                 .orElseThrow(() -> new ResourceNotFoundException("Rol no encontrado: " + roleName));
 
@@ -65,6 +74,16 @@ public class AuthService {
 
         String token = jwtService.generateToken(new CustomUserDetails(user));
         return buildAuthResponse(user, token);
+    }
+
+    private boolean isCurrentUserAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_ADMIN"::equals);
     }
 
     private AuthResponse buildAuthResponse(User user, String token) {

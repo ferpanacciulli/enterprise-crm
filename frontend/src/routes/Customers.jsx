@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLoaderData, useFetcher } from 'react-router-dom';
 import { api } from '../lib/api';
+import { getStoredUser } from '../lib/session';
 
 const EMPTY_FORM = {
   companyName: '',
@@ -53,6 +54,9 @@ export async function customersAction({ request }) {
 
 export default function Customers() {
   const customers = useLoaderData();
+  const currentRole = getStoredUser()?.role;
+  const canWrite = currentRole === 'ADMIN' || currentRole === 'MANAGER';
+  const canDelete = currentRole === 'ADMIN';
   const formFetcher = useFetcher();
   const deleteFetcher = useFetcher();
 
@@ -60,6 +64,8 @@ export default function Customers() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
+  const formError = formFetcher.data?.error;
+  const deleteError = deleteFetcher.data?.error;
   const fieldErrors = formFetcher.data?.fieldErrors || {};
   const isSaving = formFetcher.state !== 'idle';
 
@@ -105,8 +111,15 @@ export default function Customers() {
     <div className="page">
       <div className="page-header">
         <h1>Clientes</h1>
-        <button onClick={openCreate}>+ Nuevo cliente</button>
+        {canWrite && <button onClick={openCreate}>+ Nuevo cliente</button>}
       </div>
+
+      {!canWrite && (
+        <div className="alert alert-error">Tu rol ({currentRole}) es de solo lectura en esta sección.</div>
+      )}
+      {(formError || deleteError) && (
+        <div className="alert alert-error">{formError || deleteError}</div>
+      )}
 
       <table className="data-table">
         <thead>
@@ -132,8 +145,8 @@ export default function Customers() {
                 <span className={`badge badge-${c.status?.toLowerCase()}`}>{c.status}</span>
               </td>
               <td className="actions">
-                <button className="link-btn" onClick={() => openEdit(c)}>Editar</button>
-                <button className="link-btn link-btn-danger" onClick={() => handleDelete(c.id)}>Eliminar</button>
+                {canWrite && <button className="link-btn" onClick={() => openEdit(c)}>Editar</button>}
+                {canDelete && <button className="link-btn link-btn-danger" onClick={() => handleDelete(c.id)}>Eliminar</button>}
               </td>
             </tr>
           ))}
