@@ -29,7 +29,12 @@ export default function Register() {
   return (
     <div className="auth-page">
       <Form method="post" className="auth-card">
+        <div className="auth-brand">
+          <span className="auth-brand-mark">E</span>
+          Enterprise CRM
+        </div>
         <h1>Crear cuenta</h1>
+        <p className="auth-sub">Empezá a gestionar tu negocio en minutos.</p>
 
         {actionData?.error && <div className="alert alert-error">{actionData.error}</div>}
 

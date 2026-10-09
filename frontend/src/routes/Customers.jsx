@@ -112,7 +112,10 @@ export default function Customers() {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Clientes</h1>
+        <div>
+          <h1>Clientes</h1>
+          <p className="page-sub">Empresas y contactos del negocio.</p>
+        </div>
         {canWrite && <button onClick={openCreate}>+ Nuevo cliente</button>}
       </div>
 
@@ -123,6 +126,7 @@ export default function Customers() {
         <div className="alert alert-error">{formError || deleteError}</div>
       )}
 
+      <div className="table-wrap">
       <table className="data-table">
         <thead>
           <tr>
@@ -159,6 +163,7 @@ export default function Customers() {
           )}
         </tbody>
       </table>
+      </div>
 
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>

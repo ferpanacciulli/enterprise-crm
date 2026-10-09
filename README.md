@@ -104,7 +104,17 @@ Hay dos capas:
 
 ## Deploy
 
-Ver [`DEPLOY.md`](./DEPLOY.md) — guía paso a paso para backend en Railway (con Postgres gestionado) y frontend en Vercel. Esa parte requiere tus propias cuentas, no se puede automatizar del todo.
+**Opción A — Solo frontend en Vercel (modo demo, 2 minutos, sin backend):**
+
+1. Subí el repo a GitHub.
+2. En Vercel: **Add New → Project** → elegí el repo → **Root Directory: `frontend`**.
+3. En **Environment Variables** agregá `VITE_DEMO_MODE=true` y hacé Deploy.
+4. Listo — cualquiera puede probar el CRM con datos de ejemplo (se guardan en el navegador).
+
+**Opción B — Full-stack (Railway + frontend en Vercel):**
+
+Ver [`DEPLOY.md`](./DEPLOY.md) — guía paso a paso. En Railway tenés backend Java
++ Postgres en el mismo proyecto; en Vercel usá `VITE_API_URL=https://tu-backend.up.railway.app` (sin `VITE_DEMO_MODE`).
 
 ## Bug corregido en esta versión
 

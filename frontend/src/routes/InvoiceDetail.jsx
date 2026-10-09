@@ -1,5 +1,5 @@
 import { Link, useLoaderData } from 'react-router-dom';
-import { API_URL, api } from '../lib/api';
+import { API_URL, DEMO_MODE, api } from '../lib/api';
 import { getToken } from '../lib/session';
 
 export async function invoiceDetailLoader({ params }) {
@@ -36,8 +36,8 @@ export default function InvoiceDetail() {
       <div className="no-print" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
         <Link to="/invoices">&larr; Volver a facturas</Link>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={downloadPdf}>Descargar PDF</button>
-          <button className="secondary" onClick={() => window.print()}>Imprimir</button>
+          {!DEMO_MODE && <button onClick={downloadPdf}>Descargar PDF</button>}
+          <button className="secondary" onClick={() => window.print()}>{DEMO_MODE ? 'Imprimir / Guardar PDF' : 'Imprimir'}</button>
         </div>
       </div>
 

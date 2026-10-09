@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLoaderData, useFetcher } from 'react-router-dom';
 import { requireAuth } from '../lib/session';
+import { DEMO_MODE } from '../lib/api';
 
 export function appLayoutLoader() {
   return requireAuth();
@@ -12,7 +13,11 @@ export default function AppLayout() {
   return (
     <div className="app-shell">
       <nav className="navbar">
-        <div className="navbar-brand">Enterprise CRM</div>
+        <div className="navbar-brand">
+          <span className="navbar-brand-mark">E</span>
+          Enterprise CRM
+          {DEMO_MODE && <span className="demo-pill">DEMO</span>}
+        </div>
         <div className="navbar-links">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
             Dashboard
@@ -37,7 +42,7 @@ export default function AppLayout() {
         </div>
         <div className="navbar-user">
           <span>
-            {user?.fullName} <small>({user?.role})</small>
+            {user?.fullName} <span className="role-pill">{user?.role}</span>
           </span>
           <logoutFetcher.Form method="post" action="/logout">
             <button type="submit">Salir</button>

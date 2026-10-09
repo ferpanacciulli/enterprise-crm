@@ -26,7 +26,8 @@ export default function Dashboard() {
   return (
     <div className="page">
       <h1>Dashboard</h1>
-      <div className="stats-grid">
+      <p className="page-sub">Vista general del negocio en tiempo real.</p>
+      <div className="stats-grid" style={{ marginTop: '1.25rem' }}>
         <Link to="/customers" className="stat-card">
           <span className="stat-value">{stats.customers}</span>
           <span className="stat-label">Clientes</span>

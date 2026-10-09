@@ -1,5 +1,7 @@
 # Blueprint de Render (https://render.com/docs/blueprint-spec).
 # Al conectar el repo, Render puede leer este archivo y armar el servicio solo.
+# La base de datos es Neon (Postgres gestionado): las credenciales se cargan
+# como variables de entorno en el dashboard de Render, NUNCA en este archivo.
 services:
   - type: web
     name: enterprise-crm-backend
@@ -18,3 +20,5 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
+      # Flyway corre al arrancar (validate + migrate): contra Neon crea el
+      # schema solo en el primer deploy. No hace falta correr SQL a mano.

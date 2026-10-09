@@ -1,9 +1,20 @@
 import { redirect } from 'react-router-dom';
 import { clearSession, getToken } from './session';
+import { isDemoMode, demoLogin, demoRegister, demoApi } from './demo';
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+export const DEMO_MODE = isDemoMode();
 
+// En modo demo (Vercel sin backend) todas las llamadas se resuelven en
+// memoria con datos de ejemplo. En modo normal pegan al backend real.
 async function request(path, options = {}) {
+  if (DEMO_MODE) {
+    const method = (options.method || 'GET').toUpperCase();
+    const body = options.body ? JSON.parse(options.body) : undefined;
+    await new Promise((r) => setTimeout(r, 200)); // latencia simulada
+    return demoApi(method, path, body);
+  }
+
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
@@ -48,6 +59,10 @@ export const api = {
 };
 
 export const authApi = {
-  login: (email, password) => api.post('/auth/login', { email, password }),
-  register: (payload) => api.post('/auth/register', payload),
+  login: (email, password) =>
+    DEMO_MODE ? demoLogin(email, password) : api.post('/auth/login', { email, password }),
+  register: (payload) =>
+    DEMO_MODE ? demoRegister(payload) : api.post('/auth/register', payload),
 };
+
+

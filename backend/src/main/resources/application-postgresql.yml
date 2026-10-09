@@ -1,10 +1,16 @@
 spring:
   datasource:
+    # Perfil postgresql: apunta a Neon (o cualquier Postgres gestionado).
+    # En local contra Docker se usan los defaults; en el deploy se pisan
+    # con variables de entorno (ver DEPLOY.md opción B).
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/crm}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    hikari:
+      # Neon cierra conexiones idle bastante rápido; estos valores evitan
+      # "connection is closed" después de un rato sin tráfico (típico en free tier).
+      max-lifetime: 300000
+      keepalive-time: 30000
 
   data:
-    redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
+    # (Redis se sacó del pom: no se usaba en el código y solo complicaba el deploy.)
