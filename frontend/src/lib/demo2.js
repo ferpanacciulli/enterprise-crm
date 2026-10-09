@@ -77,7 +77,11 @@ export function demoOppInvoice(db, me, method, urlPath, params, body, fail, pers
       return { id: nextId(db), sku: p.sku, productName: p.name, quantity: l.quantity, unitPrice: p.unitPrice, lineTotal: Number(p.unitPrice) * l.quantity };
     });
     const total = items.reduce((s, i) => s + i.lineTotal, 0);
-    const invoice = { id: nextId(db), invoiceNumber: `FAC-${String(db.invoices.length + 1).padStart(4, '0')}`, customerCompanyName: customer.companyName, customerContactName: customer.contactName, customerEmail: customer.email, customerAddress: [customer.city, customer.country].filter(Boolean).join(', '), issueDate: new Date().toISOString(), total, createdByName: me.fullName, items };
+    const maxN = db.invoices.reduce((m, inv) => {
+      const n = Number((inv.invoiceNumber || '').replace('FAC-', ''));
+      return Number.isNaN(n) ? m : Math.max(m, n);
+    }, 0);
+    const invoice = { id: nextId(db), invoiceNumber: `FAC-${String(maxN + 1).padStart(4, '0')}`, customerCompanyName: customer.companyName, customerContactName: customer.contactName, customerEmail: customer.email, customerAddress: [customer.city, customer.country].filter(Boolean).join(', '), issueDate: new Date().toISOString(), total, createdByName: me.fullName, items };
     db.invoices.push(invoice);
     audit(db, me.email, 'Invoice', invoice.id, 'CREATE', invoice.invoiceNumber);
     return persist(invoice);

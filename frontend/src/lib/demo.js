@@ -11,6 +11,36 @@ export function isDemoMode() {
   return import.meta.env.VITE_DEMO_MODE === 'true';
 }
 
+function mkDemoInvoices() {
+  // Facturas de ejemplo repartidas en los últimos 6 meses para que el
+  // gráfico de ventas se vea con vida desde el primer login demo.
+  const now = new Date();
+  const specs = [
+    { monthsAgo: 5, total: 1899.98, customer: 'Acme Corp', n: 1 },
+    { monthsAgo: 4, total: 259.97, customer: 'Globex', n: 2 },
+    { monthsAgo: 4, total: 1299.99, customer: 'Initech', n: 3 },
+    { monthsAgo: 3, total: 3499.5, customer: 'Acme Corp', n: 4 },
+    { monthsAgo: 2, total: 598.0, customer: 'Globex', n: 5 },
+    { monthsAgo: 1, total: 4299.99, customer: 'Acme Corp', n: 6 },
+    { monthsAgo: 0, total: 2659.97, customer: 'Acme Corp', n: 7 },
+  ];
+  return specs.map((s) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - s.monthsAgo, 12);
+    return {
+      id: s.n,
+      invoiceNumber: `FAC-${String(s.n).padStart(4, '0')}`,
+      customerCompanyName: s.customer,
+      customerContactName: '',
+      customerEmail: '',
+      customerAddress: '',
+      issueDate: d.toISOString(),
+      total: s.total,
+      createdByName: 'Admin Demo',
+      items: [{ id: s.n, sku: 'LAP-001', productName: 'Laptop Pro 14', quantity: 1, unitPrice: s.total, lineTotal: s.total }],
+    };
+  });
+}
+
 function seed() {
   return {
     user: { email: 'admin@crm.com', fullName: 'Admin Demo', role: 'ADMIN' },
@@ -27,10 +57,11 @@ function seed() {
     opportunities: [
       { id: 1, title: 'Renovación flota Acme', amount: 25999.8, stage: 'NEGOTIATION', expectedCloseDate: '2026-11-30', customerId: 1, customerName: 'Acme Corp', ownerName: 'Admin Demo' },
       { id: 2, title: 'Piloto Globex', amount: 1990.0, stage: 'PROPOSAL', expectedCloseDate: '2026-10-31', customerId: 2, customerName: 'Globex', ownerName: 'Admin Demo' },
+      { id: 3, title: 'Licencias Initech', amount: 5970.0, stage: 'QUALIFIED', expectedCloseDate: '2026-12-15', customerId: 3, customerName: 'Initech', ownerName: 'Admin Demo' },
+      { id: 4, title: 'Soporte anual Acme', amount: 12000.0, stage: 'WON', expectedCloseDate: '2026-08-01', customerId: 1, customerName: 'Acme Corp', ownerName: 'Admin Demo' },
+      { id: 5, title: 'Starter Globex', amount: 890.0, stage: 'LEAD', expectedCloseDate: '2027-01-15', customerId: 2, customerName: 'Globex', ownerName: 'Admin Demo' },
     ],
-    invoices: [
-      { id: 1, invoiceNumber: 'FAC-0001', customerCompanyName: 'Acme Corp', customerContactName: 'Juan Pérez', customerEmail: 'juan@acme.com', customerAddress: 'Buenos Aires, Argentina', issueDate: new Date().toISOString(), total: 2659.97, createdByName: 'Admin Demo', items: [{ id: 1, sku: 'LAP-001', productName: 'Laptop Pro 14', quantity: 2, unitPrice: 1299.99, lineTotal: 2599.98 }, { id: 2, sku: 'MOU-002', productName: 'Mouse inalámbrico', quantity: 2, unitPrice: 29.99, lineTotal: 59.98 }] },
-    ],
+    invoices: mkDemoInvoices(),
     activities: {
       1: [{ id: 1, type: 'NOTE', description: 'Llamé al cliente, quedó en confirmar la próxima semana.', createdByName: 'Admin Demo', activityDate: new Date().toISOString() }],
       2: [],
