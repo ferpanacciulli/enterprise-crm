@@ -41,13 +41,22 @@ export async function productsLoader({ request }) {
   const onlyLowStock = url.searchParams.get('lowStock') === '1';
   const search = url.searchParams.get('search') || '';
 
+  const products = await api.get('/api/products');
+
   if (onlyLowStock) {
-    return api.get('/api/products/low-stock');
+    // Filtrar productos con bajo stock en el cliente (Supabase no tiene endpoint /low-stock)
+    return products.filter(
+      (p) => p.quantityInStock != null && p.reorderLevel != null && p.quantityInStock <= p.reorderLevel
+    );
   }
   if (search) {
-    return api.get(`/api/products?search=${encodeURIComponent(search)}`);
+    return products.filter((p) =>
+      (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.sku || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.category || '').toLowerCase().includes(search.toLowerCase())
+    );
   }
-  return api.get('/api/products');
+  return products;
 }
 
 export async function productsAction({ request }) {
@@ -61,8 +70,16 @@ export async function productsAction({ request }) {
     }
 
     if (intent === 'adjustStock') {
+      const productId = formData.get('id');
       const delta = Number(formData.get('delta'));
-      await api.patch(`/api/products/${formData.get('id')}/stock`, { delta });
+
+      // Obtener producto actual para calcular el nuevo stock
+      const products = await api.get(`/api/products/${productId}`);
+      const product = products?.[0];
+      const currentStock = product?.quantityInStock || 0;
+      const newStock = currentStock + delta;
+
+      await api.patch(`/api/products/${productId}`, { quantityInStock: newStock });
       return { ok: true };
     }
 

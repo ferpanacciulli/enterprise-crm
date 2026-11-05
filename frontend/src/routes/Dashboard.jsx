@@ -4,13 +4,17 @@ import { SalesChart, PipelineChart } from '../components/charts';
 import { buildDashboardStats } from '../lib/dashboardStats';
 
 export async function dashboardLoader() {
-  const [customers, opportunities, products, lowStock, invoices] = await Promise.all([
+  const [customers, opportunities, products, invoices] = await Promise.all([
     api.get('/api/customers'),
     api.get('/api/opportunities'),
     api.get('/api/products'),
-    api.get('/api/products/low-stock'),
     api.get('/api/invoices'),
   ]);
+
+  // Calcular bajo stock en el cliente (Supabase no tiene endpoint /low-stock)
+  const lowStock = products.filter(
+    (p) => p.quantityInStock != null && p.reorderLevel != null && p.quantityInStock <= p.reorderLevel
+  );
 
   return buildDashboardStats({ customers, opportunities, products, lowStock, invoices });
 }

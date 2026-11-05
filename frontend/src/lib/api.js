@@ -39,6 +39,40 @@ function toCamelCase(obj) {
   return obj;
 }
 
+// Mapear rutas del frontend a rutas de Supabase REST API
+function mapPath(path) {
+  let newPath = path.replace(/^\/api\//, '/');
+
+  // Caso: /products/123 => /products?id=eq.123
+  const singleRecordMatch = newPath.match(/^\/([^\/]+)\/([0-9a-f-]{36})$/i);
+  if (singleRecordMatch) {
+    const [, table, id] = singleRecordMatch;
+    return `/${table}?id=eq.${id}`;
+  }
+
+  // Caso: /opportunities/123/activities => /activities?opportunity_id=eq.123
+  const nestedMatch = newPath.match(/^\/([^\/]+)\/([0-9a-f-]{36})\/([^\/]+)$/i);
+  if (nestedMatch) {
+    const [, , id, nestedTable] = nestedMatch;
+    const tableMap = {
+      activities: 'activities',
+      products: 'opportunity_products',
+      invoices: 'invoice_items',
+    };
+    const targetTable = tableMap[nestedTable] || nestedTable;
+    return `/${targetTable}?opportunity_id=eq.${id}`;
+  }
+
+  // Caso: /invoices/123/items => /invoice_items?invoice_id=eq.123
+  const invoiceItemsMatch = newPath.match(/^\/invoices\/([0-9a-f-]{36})\/items$/i);
+  if (invoiceItemsMatch) {
+    const [, id] = invoiceItemsMatch;
+    return `/invoice_items?invoice_id=eq.${id}`;
+  }
+
+  return newPath;
+}
+
 async function supabaseRequest(path, options = {}) {
   const finalHeaders = {
     'apikey': SUPABASE_ANON_KEY,
@@ -46,8 +80,8 @@ async function supabaseRequest(path, options = {}) {
     'Content-Type': 'application/json',
     ...(options?.headers || {}),
   };
-  const supabasePath = path.replace(/^\/api\//, '/');
-  const url = `${SUPABASE_URL}/rest/v1${supabasePath}`;
+  const mappedPath = mapPath(path);
+  const url = `${SUPABASE_URL}/rest/v1${mappedPath}`;
   const response = await fetch(url, {
     method: options?.method || 'GET',
     headers: finalHeaders,
