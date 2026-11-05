@@ -46,27 +46,21 @@ async function supabaseRequest(path, options = {}) {
     'Content-Type': 'application/json',
     ...(options?.headers || {}),
   };
-
   const supabasePath = path.replace(/^\/api\//, '/');
   const url = `${SUPABASE_URL}/rest/v1${supabasePath}`;
-
   const response = await fetch(url, {
     method: options?.method || 'GET',
     headers: finalHeaders,
     body: options?.body ? JSON.stringify(toSnakeCase(options.body)) : undefined,
   });
-
   if (response.status === 204) return null;
-
   const body = await response.json().catch(() => null);
-
   if (!response.ok) {
     const err = new Error(body?.message || `Error ${response.status}`);
     err.status = response.status;
     err.fieldErrors = body?.fieldErrors || null;
     throw err;
   }
-
   // Convertir las respuestas a camelCase para que el frontend pueda consumirlas fácilmente
   return toCamelCase(body);
 }
@@ -80,16 +74,24 @@ export const api = {
 };
 
 export async function login(email, password) {
-  const url = `${SUPABASE_URL}/auth/v1/token`;
+  const url = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, grant_type: 'password' }),
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
   });
 
   if (!res.ok) {
     const data = await res.json().catch(() => null);
-    const err = new Error(data?.error_description || `Error ${res.status}`);
+    let msg = data?.error_description || data?.message || `Error ${res.status}`;
+    if (msg?.includes('not confirmed') || msg?.includes('confirm')) {
+      msg = 'Tu email no está confirmado. Revisá tu bandeja de entrada o contactá al administrador.';
+    }
+    const err = new Error(msg);
     err.status = res.status;
     throw err;
   }
@@ -116,7 +118,9 @@ export async function register(payload) {
   const url = `${SUPABASE_URL}/auth/v1/signup`;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({
       email: payload.email,
       password: payload.password,
