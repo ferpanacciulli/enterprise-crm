@@ -1,10 +1,15 @@
 import { redirect } from 'react-router-dom';
 
 const TOKEN_KEY = 'crm_token';
+const REFRESH_TOKEN_KEY = 'crm_refresh_token';
 const USER_KEY = 'crm_user';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
+}
+
+export function getRefreshToken() {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
 export function getStoredUser() {
@@ -14,6 +19,9 @@ export function getStoredUser() {
 
 export function saveSession(authResponse) {
   localStorage.setItem(TOKEN_KEY, authResponse.token);
+  if (authResponse.refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, authResponse.refreshToken);
+  }
   localStorage.setItem(
     USER_KEY,
     JSON.stringify({
@@ -26,6 +34,7 @@ export function saveSession(authResponse) {
 
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
 }
 
