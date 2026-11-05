@@ -1,4 +1,4 @@
-import { saveSession } from './session';
+import { saveSession, getToken } from './session';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -74,9 +74,10 @@ function mapPath(path) {
 }
 
 async function supabaseRequest(path, options = {}) {
+  const token = getToken();
   const finalHeaders = {
     'apikey': SUPABASE_ANON_KEY,
-    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    'Authorization': token ? `Bearer ${token}` : `Bearer ${SUPABASE_ANON_KEY}`,
     'Content-Type': 'application/json',
     ...(options?.headers || {}),
   };
@@ -133,6 +134,7 @@ export async function login(email, password) {
   const data = await res.json();
   const fullName = data.user?.user_metadata?.full_name || email;
 
+  // Guardar el token en la sesión para que las siguientes llamadas usen el JWT del usuario
   saveSession({
     token: data.access_token || 'supabase_token',
     email,
@@ -140,11 +142,30 @@ export async function login(email, password) {
     role: 'SALES_REPRESENTATIVE',
   });
 
+  // Obtener el rol real del usuario desde la tabla users de Supabase
+  let userRole = 'SALES_REPRESENTATIVE'; // valor por defecto
+  try {
+    const users = await api.get(`/api/users?email=eq.${encodeURIComponent(email)}`);
+    if (users && users.length > 0) {
+      userRole = users[0].role || 'SALES_REPRESENTATIVE';
+    }
+  } catch (e) {
+    console.warn('No se pudo obtener el rol del usuario:', e.message);
+  }
+
+  // Actualizar la sesión con el rol correcto
+  saveSession({
+    token: data.access_token || 'supabase_token',
+    email,
+    fullName,
+    role: userRole,
+  });
+
   return {
     token: data.access_token || 'supabase_token',
     email,
     fullName,
-    role: 'SALES_REPRESENTATIVE',
+    role: userRole,
   };
 }
 
