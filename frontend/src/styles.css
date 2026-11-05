@@ -1,4 +1,4 @@
-/* ============ Enterprise CRM — design system ============ */
+﻿/* ============ Enterprise CRM â€” design system ============ */
 :root {
   --bg: #f1f5f9;
   --surface: #ffffff;
@@ -85,15 +85,6 @@ body {
   margin-bottom: 1rem;
 }
 
-.demo-banner {
-  font-size: 0.85rem;
-  color: #0c4a6e;
-  background: #e0f2fe;
-  border: 1px solid #bae6fd;
-  padding: 0.6rem 0.75rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-}
 
 .auth-switch { text-align: center; font-size: 0.9rem; margin-top: 1rem; color: var(--muted); }
 .auth-switch a { color: var(--brand-600); font-weight: 600; }
@@ -204,15 +195,6 @@ body {
 }
 .navbar-user button:hover { background: rgba(255, 255, 255, 0.12); }
 
-.demo-pill {
-  background: #38bdf8;
-  color: #082f49;
-  font-weight: 800;
-  font-size: 0.7rem;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  letter-spacing: 0.05em;
-}
 
 /* ---- Buttons ---- */
 button {
@@ -542,3 +524,4 @@ button.danger:hover { background: #b91c1c; }
     box-shadow: none;
   }
 }
+

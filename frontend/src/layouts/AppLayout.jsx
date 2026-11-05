@@ -1,6 +1,5 @@
 import { NavLink, Outlet, useLoaderData, useFetcher } from 'react-router-dom';
 import { requireAuth } from '../lib/session';
-import { DEMO_MODE } from '../lib/api';
 
 export function appLayoutLoader() {
   return requireAuth();
@@ -16,7 +15,6 @@ export default function AppLayout() {
         <div className="navbar-brand">
           <span className="navbar-brand-mark">E</span>
           Enterprise CRM
-          {DEMO_MODE && <span className="demo-pill">DEMO</span>}
         </div>
         <div className="navbar-links">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>

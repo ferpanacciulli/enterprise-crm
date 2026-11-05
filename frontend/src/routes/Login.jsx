@@ -1,9 +1,9 @@
 import { Form, Link, redirect, useActionData, useNavigation, useSearchParams } from 'react-router-dom';
-import { authApi, DEMO_MODE } from '../lib/api';
+import { authApi } from '../lib/api';
 import { saveSession, getToken } from '../lib/session';
 
 export async function loginLoader() {
-  // ya logueado -> no tiene sentido mostrar el login de nuevo
+  // Ya logueado -> no tiene sentido mostrar el login de nuevo
   if (getToken()) {
     return redirect('/');
   }
@@ -40,15 +40,6 @@ export default function Login() {
         </div>
         <h1>Iniciar sesión</h1>
         <p className="auth-sub">Gestioná clientes, oportunidades, stock y facturas.</p>
-        {DEMO_MODE ? (
-          <p className="demo-banner">
-            Modo demo — entrá con cualquier email, sin contraseña real. Los datos se guardan en tu navegador.
-          </p>
-        ) : (
-          <p className="auth-hint">
-            Usuario de prueba: <code>admin@crm.com</code> / <code>Admin123!</code>
-          </p>
-        )}
 
         {sessionExpired && !actionData?.error && (
           <div className="alert alert-error">Tu sesión expiró. Iniciá sesión de nuevo para continuar.</div>
