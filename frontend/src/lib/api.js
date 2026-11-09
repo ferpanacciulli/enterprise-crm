@@ -1,4 +1,5 @@
-import { saveSession, getToken } from './session';
+
+import { saveSession, getToken, getRefreshToken, getStoredUser, clearSession, isTokenExpired } from './session';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -73,7 +74,64 @@ function mapPath(path) {
   return newPath;
 }
 
-async function supabaseRequest(path, options = {}) {
+/**
+ * Renueva el access_token usando el refresh_token.
+ * Devuelve true si se renovó, false si no se pudo (y limpia la sesión).
+ */
+let refreshPromise = null; // evita que varias requests refresquen a la vez
+
+async function refreshAccessToken() {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) return false;
+
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (!res.ok) {
+        // El refresh token también está vencido o revocado: cerrar sesión de verdad.
+        clearSession();
+        return false;
+      }
+
+      const data = await res.json();
+      // Reutilizamos el usuario guardado para no pisarlo con datos vacíos
+      const user = getStoredUser() || {};
+      saveSession({
+        token: data.access_token,
+        refreshToken: data.refresh_token,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+      });
+      return true;
+    })().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+async function supabaseRequest(path, options = {}, _retried = false) {
+  // Renovación proactiva: si el token ya venció y tenemos refresh, renovar antes de pedir
+  if (isTokenExpired() && getRefreshToken()) {
+    const ok = await refreshAccessToken();
+    if (!ok) {
+      const err = new Error('Tu sesión expiró. Volvé a iniciar sesión.');
+      err.status = 401;
+      err.sessionExpired = true;
+      throw err;
+    }
+  }
+
   const token = getToken();
   const finalHeaders = {
     'apikey': SUPABASE_ANON_KEY,
@@ -90,9 +148,29 @@ async function supabaseRequest(path, options = {}) {
   });
   if (response.status === 204) return null;
   const body = await response.json().catch(() => null);
+
+  // Token vencido a mitad de camino: renovar y reintentar UNA sola vez
+  const jwtExpired =
+    response.status === 401 &&
+    (body?.message?.toLowerCase().includes('jwt') ||
+      body?.error_description?.toLowerCase().includes('expired') ||
+      body?.msg?.toLowerCase().includes('jwt'));
+
+  if (jwtExpired && !_retried && getRefreshToken()) {
+    const ok = await refreshAccessToken();
+    if (ok) {
+      return supabaseRequest(path, options, true);
+    }
+    const err = new Error('Tu sesión expiró. Volvé a iniciar sesión.');
+    err.status = 401;
+    err.sessionExpired = true;
+    throw err;
+  }
+
   if (!response.ok) {
     const err = new Error(body?.message || `Error ${response.status}`);
     err.status = response.status;
+    if (response.status === 401) err.sessionExpired = true;
     err.fieldErrors = body?.fieldErrors || null;
     throw err;
   }
@@ -133,17 +211,10 @@ export async function login(email, password) {
 
   const data = await res.json();
   const fullName = data.user?.user_metadata?.full_name || email;
+  const token = data.access_token;
+  const refreshToken = data.refresh_token;
 
-  // Guardar el token y el refresh token en la sesión
-  const token = data.access_token || 'supabase_token';
-  const refreshToken = data.refresh_token || null;
-  saveSession({
-    token,
-    refreshToken,
-    email,
-    fullName,
-    role: 'SALES_REPRESENTATIVE',
-  });
+  saveSession({ token, refreshToken, email, fullName, role: 'SALES_REPRESENTATIVE' });
 
   // Obtener el rol real del usuario desde la tabla users de Supabase
   let userRole = 'SALES_REPRESENTATIVE'; // valor por defecto
@@ -157,20 +228,9 @@ export async function login(email, password) {
   }
 
   // Actualizar la sesión con el rol correcto
-  saveSession({
-    token,
-    refreshToken,
-    email,
-    fullName,
-    role: userRole,
-  });
+  saveSession({ token, refreshToken, email, fullName, role: userRole });
 
-  return {
-    token: data.access_token || 'supabase_token',
-    email,
-    fullName,
-    role: userRole,
-  };
+  return { token, email, fullName, role: userRole };
 }
 
 export async function register(payload) {
@@ -178,19 +238,20 @@ export async function register(payload) {
   const res = await fetch(url, {
     method: 'POST',
     headers: {
+      'apikey': SUPABASE_ANON_KEY,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       email: payload.email,
       password: payload.password,
-      email_confirm: true,
-      metadata: { full_name: `${payload.firstName} ${payload.lastName}` },
+      // FIX: los datos del usuario van en "data" para Supabase
+      data: { full_name: `${payload.firstName} ${payload.lastName}` },
     }),
   });
 
   if (!res.ok) {
     const data = await res.json().catch(() => null);
-    const err = new Error(data?.error_description || `Error ${res.status}`);
+    const err = new Error(data?.error_description || data?.message || `Error ${res.status}`);
     err.status = res.status;
     throw err;
   }
@@ -199,14 +260,15 @@ export async function register(payload) {
   const fullName = `${payload.firstName} ${payload.lastName}`;
 
   saveSession({
-    token: data.access_token || 'supabase_dummy',
+    token: data.access_token,
+    refreshToken: data.refresh_token,
     email: payload.email,
     fullName,
     role: 'SALES_REPRESENTATIVE',
   });
 
   return {
-    token: data.access_token || 'supabase_dummy',
+    token: data.access_token,
     email: payload.email,
     fullName,
     role: 'SALES_REPRESENTATIVE',
@@ -217,5 +279,3 @@ export const authApi = {
   login,
   register,
 };
-
-// Exportar las funciones y constantes
